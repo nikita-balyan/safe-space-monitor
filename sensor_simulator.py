@@ -5,8 +5,10 @@ import random
 import argparse
 import threading
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from pathlib import Path
+from collections import deque
 
 # ==============================
 # Global Configurations
@@ -16,12 +18,14 @@ DATA_DIR.mkdir(exist_ok=True)
 
 RAW_FILE = DATA_DIR / "sensor_data.csv"
 PROCESSED_FILE = DATA_DIR / "processed_data.csv"
+FEATURES_FILE = DATA_DIR / "features_data.csv"
+FEEDBACK_FILE = DATA_DIR / "user_feedback.csv"
 
-# Thresholds
+# Thresholds for overload detection
 THRESHOLDS = {
-    "noise": 70,
-    "light": 3000,
-    "motion": 50
+    "noise": {"warning": 70, "danger": 100},
+    "light": {"warning": 3000, "danger": 8000},
+    "motion": {"warning": 50, "danger": 80}
 }
 
 # Global data storage
@@ -33,8 +37,10 @@ latest_reading = {
     "timestamp": datetime.now().isoformat()
 }
 
-historical_data = []
-MAX_HISTORY = 60  # Keep last 60 seconds
+# Enhanced data storage for feature engineering
+historical_data = deque(maxlen=300)  # 5 minutes at 1Hz
+feature_buffer = deque(maxlen=60)    # 60 seconds for real-time features
+MAX_HISTORY = 60  # Keep last 60 seconds for API
 
 # Threading lock for thread-safe operations
 data_lock = threading.Lock()
@@ -86,8 +92,12 @@ class DataSimulator:
     def log_once(self):
         n, l, m = self._simulate_once()
         
-        # Generate label based on thresholds (overload detection)
-        label = 1 if (n > 100 or l > 8000 or m > 80) else 0
+        # Generate label based on overload thresholds
+        # Overload = 1 if ANY sensor exceeds danger threshold
+        label = 1 if (n > THRESHOLDS["noise"]["danger"] or 
+                      l > THRESHOLDS["light"]["danger"] or 
+                      m > THRESHOLDS["motion"]["danger"]) else 0
+        
         timestamp = datetime.now().isoformat()
 
         # Log to CSV
@@ -96,6 +106,77 @@ class DataSimulator:
             writer.writerow([timestamp, n, l, m, label])
             
         return n, l, m, label, timestamp
+
+# ==============================
+# Feature Engineering Functions
+# ==============================
+def extract_rolling_features(data, window_sizes=[10, 30, 60]):
+    """Extract rolling statistical features from sensor data"""
+    if len(data) < min(window_sizes):
+        return {}
+    
+    features = {}
+    
+    # Convert deque to DataFrame for easier processing
+    df = pd.DataFrame(list(data))
+    
+    for window in window_sizes:
+        if len(df) >= window:
+            # Rolling statistics for each sensor
+            for sensor in ['noise', 'light', 'motion']:
+                if sensor in df.columns:
+                    rolling_data = df[sensor].rolling(window=window, min_periods=1)
+                    
+                    features.update({
+                        f'{sensor}_mean_{window}': rolling_data.mean().iloc[-1],
+                        f'{sensor}_std_{window}': rolling_data.std().iloc[-1],
+                        f'{sensor}_min_{window}': rolling_data.min().iloc[-1],
+                        f'{sensor}_max_{window}': rolling_data.max().iloc[-1],
+                        f'{sensor}_range_{window}': rolling_data.max().iloc[-1] - rolling_data.min().iloc[-1]
+                    })
+    
+    return features
+
+def calculate_fft_energy(data, sensor='noise'):
+    """Calculate FFT energy for a sensor (simplified frequency domain feature)"""
+    if len(data) < 10:
+        return 0
+    
+    try:
+        values = [reading[sensor] for reading in data if sensor in reading]
+        if len(values) < 10:
+            return 0
+        
+        # Simple FFT energy calculation
+        fft = np.fft.fft(values[-30:])  # Last 30 readings
+        energy = np.sum(np.abs(fft)**2)
+        return float(energy)
+    except:
+        return 0
+
+def get_current_features():
+    """Get current sensor reading with extracted features for ML prediction"""
+    with data_lock:
+        if len(feature_buffer) < 10:
+            return None
+        
+        # Get rolling features
+        features = extract_rolling_features(feature_buffer)
+        
+        # Add FFT energy features
+        for sensor in ['noise', 'light', 'motion']:
+            features[f'{sensor}_fft_energy'] = calculate_fft_energy(feature_buffer, sensor)
+        
+        # Add current readings
+        current = latest_reading.copy()
+        features.update({
+            'noise': current['noise'],
+            'light': current['light'],
+            'motion': current['motion'],
+            'timestamp': current['timestamp']
+        })
+        
+        return features
 
 # ==============================
 # Flask Compatibility Functions
@@ -108,12 +189,16 @@ def get_current_readings():
 def get_historical_data(n=60):
     """Return the last n sensor readings"""
     with data_lock:
-        return historical_data[-n:].copy() if historical_data else []
+        if not historical_data:
+            return []
+        # Convert deque to list and slice
+        data_list = list(historical_data)
+        return data_list[-n:] if len(data_list) >= n else data_list
 
 def start_sensor_simulation(interval=1):
     """Start the sensor simulation in a background thread"""
     def run_simulation():
-        global latest_reading, historical_data
+        global latest_reading, historical_data, feature_buffer
         sim = DataSimulator()
         
         while True:
@@ -130,12 +215,11 @@ def start_sensor_simulation(interval=1):
                         "timestamp": timestamp
                     })
                     
-                    # Add to historical data
+                    # Add to historical data (for API)
                     historical_data.append(latest_reading.copy())
                     
-                    # Keep only last MAX_HISTORY readings
-                    if len(historical_data) > MAX_HISTORY:
-                        historical_data.pop(0)
+                    # Add to feature buffer (for ML features)
+                    feature_buffer.append(latest_reading.copy())
                 
                 time.sleep(interval)
                 
@@ -149,16 +233,107 @@ def start_sensor_simulation(interval=1):
     print(f"Sensor simulation started with {interval}s interval")
 
 # ==============================
+# Data Collection for Training
+# ==============================
+def save_features_to_csv():
+    """Save current features with labels to CSV for model training"""
+    try:
+        features = get_current_features()
+        if not features:
+            return
+        
+        # Ensure features CSV exists with headers
+        if not FEATURES_FILE.exists():
+            headers = ['timestamp', 'noise', 'light', 'motion', 'label'] + \
+                     [f'{sensor}_{stat}_{window}' 
+                      for sensor in ['noise', 'light', 'motion'] 
+                      for stat in ['mean', 'std', 'min', 'max', 'range'] 
+                      for window in [10, 30, 60]] + \
+                     [f'{sensor}_fft_energy' for sensor in ['noise', 'light', 'motion']]
+            
+            with open(FEATURES_FILE, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(headers)
+        
+        # Append current features
+        with open(FEATURES_FILE, 'a', newline='') as f:
+            writer = csv.writer(f)
+            
+            # Build row with all features
+            row = [
+                features['timestamp'],
+                features['noise'],
+                features['light'], 
+                features['motion'],
+                latest_reading['label']
+            ]
+            
+            # Add rolling features
+            for sensor in ['noise', 'light', 'motion']:
+                for stat in ['mean', 'std', 'min', 'max', 'range']:
+                    for window in [10, 30, 60]:
+                        key = f'{sensor}_{stat}_{window}'
+                        row.append(features.get(key, 0))
+            
+            # Add FFT features  
+            for sensor in ['noise', 'light', 'motion']:
+                key = f'{sensor}_fft_energy'
+                row.append(features.get(key, 0))
+            
+            writer.writerow(row)
+            
+    except Exception as e:
+        print(f"Error saving features: {e}")
+
+def save_user_feedback(prediction, actual_label, timestamp):
+    """Save user feedback for model improvement"""
+    try:
+        if not FEEDBACK_FILE.exists():
+            with open(FEEDBACK_FILE, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['timestamp', 'prediction', 'actual_label', 'correct'])
+        
+        with open(FEEDBACK_FILE, 'a', newline='') as f:
+            writer = csv.writer(f)
+            correct = 1 if prediction == actual_label else 0
+            writer.writerow([timestamp, prediction, actual_label, correct])
+            
+    except Exception as e:
+        print(f"Error saving feedback: {e}")
+
+def collect_training_data(duration_minutes=5):
+    """Collect training data with features for specified duration"""
+    print(f"Collecting training data for {duration_minutes} minutes...")
+    start_time = time.time()
+    count = 0
+    
+    while time.time() - start_time < duration_minutes * 60:
+        if len(feature_buffer) >= 10:  # Ensure we have enough data for features
+            save_features_to_csv()
+            count += 1
+            
+        time.sleep(1)  # Collect every second
+        
+    print(f"Training data collection complete. Saved {count} feature records.")
+
+# ==============================
 # CLI Entry Point
 # ==============================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sensor Simulator")
     parser.add_argument("--simulate", type=int, default=60, help="Run simulation for N seconds")
+    parser.add_argument("--collect", type=int, help="Collect training data for N minutes")
     args = parser.parse_args()
 
-    print(f"Running sensor simulation for {args.simulate} seconds...")
-    start_sensor_simulation(interval=1)
-    
-    # Keep main thread alive
-    time.sleep(args.simulate)
-    print("Simulation complete.")
+    if args.collect:
+        # Start simulation and collect training data
+        start_sensor_simulation(interval=1)
+        time.sleep(10)  # Wait for buffer to fill
+        collect_training_data(args.collect)
+    else:
+        print(f"Running sensor simulation for {args.simulate} seconds...")
+        start_sensor_simulation(interval=1)
+        
+        # Keep main thread alive
+        time.sleep(args.simulate)
+        print("Simulation complete.")

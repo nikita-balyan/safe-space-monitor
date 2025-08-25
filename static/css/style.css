@@ -184,11 +184,51 @@ body {
     font-size: 2.5rem;
     font-weight: bold;
     color: var(--primary-color);
+    transition: color 0.3s ease;
 }
 
 .prediction-status {
     font-size: 1rem;
     color: #6b7280;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+/* Prediction color states */
+.prediction-status.text-success {
+    color: var(--success-color) !important;
+}
+
+.prediction-status.text-warning {
+    color: var(--warning-color) !important;
+}
+
+.prediction-status.text-danger {
+    color: var(--danger-color) !important;
+}
+
+/* Enhanced prediction widget styling */
+#predictionWidget {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 2px solid #e5e7eb;
+}
+
+#predictionWidget.high-risk {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border-color: var(--danger-color);
+}
+
+#predictionWidget.medium-risk {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-color: var(--warning-color);
+}
+
+#predictionWidget.low-risk {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-color: var(--success-color);
 }
 
 /* Navigation */

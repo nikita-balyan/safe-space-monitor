@@ -177,10 +177,13 @@ class SensorDashboard {
         }
     }
 
-    updateChildView(data) {
+    async updateChildView(data) {
         const { noise, light, motion } = data;
         
-        // Determine overall status
+        // Get AI prediction for enhanced child view
+        const prediction = await this.fetchPrediction();
+        
+        // Determine overall status using both threshold-based and AI prediction
         const dangerThresholds = { noise: 100, light: 8000, motion: 80 };
         const warningThresholds = { noise: 70, light: 3000, motion: 50 };
         
@@ -189,19 +192,22 @@ class SensorDashboard {
         let statusText = 'All Good!';
         let statusDetails = 'Everything looks perfect';
         
-        // Check for danger conditions
-        if (noise > dangerThresholds.noise || light > dangerThresholds.light || motion > dangerThresholds.motion) {
+        // Check for danger conditions (sensors or AI prediction)
+        const aiDanger = prediction && prediction.prediction === 1;
+        const aiHighRisk = prediction && prediction.probability > 0.7;
+        
+        if (noise > dangerThresholds.noise || light > dangerThresholds.light || motion > dangerThresholds.motion || aiDanger) {
             overallStatus = 'danger';
             statusEmoji = '😟';
             statusText = 'Needs Attention!';
-            statusDetails = 'Something might be too much';
+            statusDetails = aiDanger ? 'Smart monitor says be careful' : 'Something might be too much';
         }
-        // Check for warning conditions
-        else if (noise > warningThresholds.noise || light > warningThresholds.light || motion > warningThresholds.motion) {
+        // Check for warning conditions (sensors or AI prediction)
+        else if (noise > warningThresholds.noise || light > warningThresholds.light || motion > warningThresholds.motion || aiHighRisk) {
             overallStatus = 'warning';
             statusEmoji = '😐';
             statusText = 'Be Careful';
-            statusDetails = 'Might be uncomfortable';
+            statusDetails = aiHighRisk ? 'Smart monitor says watch out' : 'Might be uncomfortable';
         }
         
         // Update main status card
@@ -351,20 +357,31 @@ class SensorDashboard {
         const prediction = await this.fetchPrediction();
         const valueEl = document.getElementById('predictionValue');
         const statusEl = document.getElementById('predictionStatus');
+        const widgetEl = document.getElementById('predictionWidget');
         
-        if (prediction && valueEl && statusEl) {
+        if (prediction && valueEl && statusEl && widgetEl) {
             const probability = Math.round(prediction.probability * 100);
             valueEl.textContent = probability;
+            
+            // Remove existing risk classes
+            widgetEl.classList.remove('high-risk', 'medium-risk', 'low-risk');
             
             if (prediction.prediction === 1) {
                 statusEl.textContent = 'Overload Risk Detected';
                 statusEl.className = 'prediction-status text-danger';
+                widgetEl.classList.add('high-risk');
             } else if (probability > 70) {
                 statusEl.textContent = 'Elevated Risk';
                 statusEl.className = 'prediction-status text-warning';
+                widgetEl.classList.add('medium-risk');
+            } else if (probability > 30) {
+                statusEl.textContent = 'Low Risk';
+                statusEl.className = 'prediction-status text-warning';
+                widgetEl.classList.add('medium-risk');
             } else {
                 statusEl.textContent = 'Normal Conditions';
                 statusEl.className = 'prediction-status text-success';
+                widgetEl.classList.add('low-risk');
             }
         }
     }
