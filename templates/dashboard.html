@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Safe Space Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Child View -->
+    <div id="childView" class="view-container {% if view_mode != 'child' %}d-none{% endif %}">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="child-status-card text-center p-5 rounded-4 shadow-lg">
+                    <div class="status-emoji mb-4" id="statusEmoji">😊</div>
+                    <h1 class="status-text mb-4" id="statusText">All Good!</h1>
+                    <div class="status-details" id="statusDetails">
+                        Everything looks perfect
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Simple sensor cards for children -->
+        <div class="row mt-4 justify-content-center">
+            <div class="col-4 col-md-3">
+                <div class="child-sensor-card text-center p-3 rounded-3">
+                    <div class="sensor-icon mb-2">🔊</div>
+                    <div class="sensor-label">Sounds</div>
+                    <div class="sensor-status" id="childNoiseStatus">Good</div>
+                </div>
+            </div>
+            <div class="col-4 col-md-3">
+                <div class="child-sensor-card text-center p-3 rounded-3">
+                    <div class="sensor-icon mb-2">💡</div>
+                    <div class="sensor-label">Lights</div>
+                    <div class="sensor-status" id="childLightStatus">Good</div>
+                </div>
+            </div>
+            <div class="col-4 col-md-3">
+                <div class="child-sensor-card text-center p-3 rounded-3">
+                    <div class="sensor-icon mb-2">🏃</div>
+                    <div class="sensor-label">Movement</div>
+                    <div class="sensor-status" id="childMotionStatus">Good</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Caregiver View -->
+    <div id="caregiverView" class="view-container {% if view_mode != 'caregiver' %}d-none{% endif %}">
+        
+        <!-- Status Overview -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            Current Sensor Readings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Noise Sensor -->
+                            <div class="col-md-4 mb-3">
+                                <div class="sensor-widget">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-volume-up text-primary me-2"></i>
+                                        <span class="fw-bold">Noise Level</span>
+                                    </div>
+                                    <div class="sensor-value mb-2">
+                                        <span id="noiseValue">--</span> <small class="text-muted">dB</small>
+                                    </div>
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar" id="noiseProgress" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted">
+                                        Warning: 70dB | Danger: 100dB
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Light Sensor -->
+                            <div class="col-md-4 mb-3">
+                                <div class="sensor-widget">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                                        <span class="fw-bold">Light Level</span>
+                                    </div>
+                                    <div class="sensor-value mb-2">
+                                        <span id="lightValue">--</span> <small class="text-muted">lux</small>
+                                    </div>
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar" id="lightProgress" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted">
+                                        Warning: 3000lux | Danger: 8000lux
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Motion Sensor -->
+                            <div class="col-md-4 mb-3">
+                                <div class="sensor-widget">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-running text-success me-2"></i>
+                                        <span class="fw-bold">Motion Level</span>
+                                    </div>
+                                    <div class="sensor-value mb-2">
+                                        <span id="motionValue">--</span> <small class="text-muted">units</small>
+                                    </div>
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar" id="motionProgress" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted">
+                                        Warning: 50 | Danger: 80
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Analytics -->
+        <div class="row">
+            <!-- Historical Charts -->
+            <div class="col-lg-8 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Historical Trends (Last 60 seconds)
+                        </h6>
+                        <button class="btn btn-sm btn-outline-primary" id="exportDataBtn">
+                            <i class="fas fa-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="sensorChart" height="120"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Alert Panel -->
+            <div class="col-lg-4 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Alert History
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="alertList" class="alert-list">
+                            <div class="text-muted text-center">
+                                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                <p>No alerts detected</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Information -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            System Information
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-widget">
+                                    <div class="stat-value" id="uptimeValue">--</div>
+                                    <div class="stat-label">Uptime</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-widget">
+                                    <div class="stat-value" id="readingsCount">--</div>
+                                    <div class="stat-label">Readings</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-widget">
+                                    <div class="stat-value" id="alertsCount">0</div>
+                                    <div class="stat-label">Alerts</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0">
+                            <i class="fas fa-robot me-2"></i>
+                            AI Prediction
+                        </h6>
+                    </div>
+                    <div class="card-body text-center">
+                        <div id="predictionWidget">
+                            <div class="prediction-probability mb-2">
+                                <span id="predictionValue">--</span>%
+                            </div>
+                            <div class="prediction-status" id="predictionStatus">
+                                Analyzing...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Initialize dashboard when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDashboard();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Runtime
+flask_pid.txt
+uv.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Replit specific
+.local/
+state/
+attached_assets/
+
+# Data files
+data/
+models/*.joblib
+models/*.pkl
+models/*.txt

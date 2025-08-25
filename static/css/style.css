@@ -1,0 +1,297 @@
+/* Global Styles */
+:root {
+    --primary-color: #2563eb;
+    --success-color: #16a34a;
+    --warning-color: #ca8a04;
+    --danger-color: #dc2626;
+    --light-bg: #f8fafc;
+    --border-radius: 12px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Child View Styles */
+.child-status-card {
+    background: white;
+    border: 3px solid var(--primary-color);
+    transition: all 0.3s ease;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.child-status-card.warning {
+    border-color: var(--warning-color);
+    background: #fef3c7;
+}
+
+.child-status-card.danger {
+    border-color: var(--danger-color);
+    background: #fee2e2;
+}
+
+.status-emoji {
+    font-size: 5rem;
+    line-height: 1;
+    animation: pulse 2s infinite;
+}
+
+.status-text {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #1f2937;
+}
+
+.status-details {
+    font-size: 1.2rem;
+    color: #6b7280;
+}
+
+.child-sensor-card {
+    background: white;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.child-sensor-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.child-sensor-card.warning {
+    border-color: var(--warning-color);
+    background: #fef3c7;
+}
+
+.child-sensor-card.danger {
+    border-color: var(--danger-color);
+    background: #fee2e2;
+}
+
+.sensor-icon {
+    font-size: 2rem;
+}
+
+.sensor-label {
+    font-weight: bold;
+    color: #374151;
+}
+
+.sensor-status {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+/* Caregiver View Styles */
+.card {
+    border-radius: var(--border-radius);
+    border: none;
+}
+
+.card-header {
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+}
+
+.sensor-widget {
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.sensor-widget:hover {
+    background: #f1f5f9;
+}
+
+.sensor-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1f2937;
+}
+
+.progress {
+    border-radius: 4px;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.progress-bar.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.progress-bar.bg-warning {
+    background-color: var(--warning-color) !important;
+}
+
+.progress-bar.bg-danger {
+    background-color: var(--danger-color) !important;
+}
+
+/* Alert Styles */
+.alert-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    border-left: 4px solid;
+    background: white;
+    font-size: 0.875rem;
+}
+
+.alert-item.warning {
+    border-left-color: var(--warning-color);
+    background: #fef3c7;
+}
+
+.alert-item.danger {
+    border-left-color: var(--danger-color);
+    background: #fee2e2;
+}
+
+.alert-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Stats Widget */
+.stat-widget {
+    padding: 1rem 0;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Prediction Widget */
+.prediction-probability {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.prediction-status {
+    font-size: 1rem;
+    color: #6b7280;
+}
+
+/* Navigation */
+.navbar-brand {
+    font-weight: bold;
+}
+
+.btn-group .btn {
+    transition: all 0.3s ease;
+}
+
+.btn-group .btn.active {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .status-emoji {
+        font-size: 4rem;
+    }
+    
+    .status-text {
+        font-size: 2rem;
+    }
+    
+    .sensor-value {
+        font-size: 1.5rem;
+    }
+    
+    .child-status-card {
+        padding: 2rem !important;
+    }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Toast Notifications */
+.toast {
+    border-radius: 8px;
+    border: none;
+    box-shadow: var(--shadow);
+}
+
+/* Chart Container */
+#sensorChart {
+    max-height: 300px;
+}
+
+/* Utility Classes */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.text-gradient {
+    background: linear-gradient(45deg, var(--primary-color), var(--success-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
