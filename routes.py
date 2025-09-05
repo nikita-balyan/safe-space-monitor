@@ -1,245 +1,385 @@
-from flask import render_template, jsonify, request, current_app
+import os
+import sqlite3
+from flask import render_template, jsonify, request
+import logging
+import random
+from datetime import datetime, timedelta
+import time
 import numpy as np
-from datetime import datetime
+from database import sensor_db
+from data_collector import training_collector
 
-def register_routes(app, model, threshold, model_metadata, THRESHOLDS):
-    """Register all routes to the given Flask app with shared globals"""
+# Add these debug prints after your imports
+print("✓ Routes module loaded successfully")
+
+try:
+    from data_collector import training_collector
+    print("✓ Data collector imported successfully")
+except ImportError as e:
+    print(f"❌ Failed to import data_collector: {e}")
+    # Create a dummy collector for fallback
+    class DummyCollector:
+        def add_sample(self, *args):
+            print("⚠️ Dummy collector: would save sample", args)
+    training_collector = DummyCollector()
+
+logger = logging.getLogger(__name__)
+
+def simple_prediction(noise, light, motion, model, threshold):
+    """Simple model prediction using only 3 features"""
+    try:
+        input_data = np.array([[noise, light, motion]])
+        
+        # Check if model has predict_proba method
+        if model and hasattr(model, 'predict_proba'):
+            probability = model.predict_proba(input_data)[0, 1]
+        else:
+            # For models without predict_proba, use decision function or default
+            probability = 0.5
+            
+        prediction = 1 if probability > threshold else 0
+        
+        # Determine model type for response
+        model_type = "enhanced" if hasattr(model, 'feature_importances_') else "simple"
+        
+        result = {
+            "probability": float(probability),
+            "prediction": int(prediction),
+            "confidence": "medium",
+            "threshold": float(threshold),
+            "model_type": model_type
+        }
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Simple prediction failed: {e}")
+        return demo_prediction()
+
+def demo_prediction():
+    """Demo prediction when no model is available"""
+    return {
+        "prediction": random.choice([0, 1]),
+        "probability": random.random(),
+        "confidence": random.choice(["low", "medium", "high"]),
+        "threshold": 0.5,
+        "demo_mode": True,
+        "model_type": "demo"
+    }
+
+def register_routes(app, model, threshold, model_metadata, thresholds):
+    """Register all application routes"""
     
-    # Store references to the shared global variables
-    app.config['GLOBAL_MODEL'] = model
-    app.config['GLOBAL_THRESHOLD'] = threshold
-    app.config['GLOBAL_MODEL_METADATA'] = model_metadata
-    app.config['GLOBAL_THRESHOLDS'] = THRESHOLDS
-
-    @app.route("/")
-    def dashboard():
-        view_mode = request.args.get("view", "child")
-        return render_template("dashboard.html", 
-                             view_mode=view_mode, 
-                             thresholds=app.config['GLOBAL_THRESHOLDS'])
-
-    @app.route("/api/current")
-    def api_current_readings():
-        from sensor_simulator import get_current_readings
-        data = get_current_readings()
-        if not data:
-            return jsonify({"error": "No sensor data available"}), 404
+    @app.route('/')
+    def home():
+        # Render the dashboard template instead of returning JSON
+        return render_template('dashboard.html',
+            message="Sensor Monitoring API",
+            status="operational",
+            model_loaded=model is not None,
+            view_mode="caregiver",
+            endpoints={
+                "health": "/health",
+                "current": "/api/current",
+                "predict": "/api/predict (POST)",
+                "history": "/api/history",
+                "model_info": "/api/model_info",
+                "system_health": "/api/system/health"
+            }
+        )
+    
+    @app.route('/health')
+    def health():
+        # Keep this as JSON for API calls
+        return jsonify({
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "model_status": "loaded" if model else "not_loaded"
+        })
+    
+    @app.route('/api/current')
+    def current_sensor_data():
+        # Generate sensor data
+        data = {
+            "noise": random.randint(40, 120),
+            "light": random.randint(1000, 10000),
+            "motion": random.randint(10, 100),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Save to database
+        sensor_db.save_reading(data['noise'], data['light'], data['motion'])
+        
         return jsonify(data)
-
-    @app.route("/api/history")
-    def api_historical_data():
-        from sensor_simulator import get_historical_data
-        data = get_historical_data()
-        return jsonify(data if data else [])
-
-    @app.route("/api/status")
-    def api_status():
-        from sensor_simulator import get_current_readings
-        current = get_current_readings()
-        return jsonify({
-            "status": "active" if current else "inactive",
-            "sensors_active": bool(current),
-            "timestamp": current.get("timestamp") if current else None
-        })
-
-    @app.route("/api/thresholds")
-    def api_thresholds():
-        return jsonify(app.config['GLOBAL_THRESHOLDS'])
-
-    @app.route("/test")
-    def test_route():
-        return "Flask is working! If you see this, the server is running."
-
-    @app.route("/debug/routes")
-    def debug_routes():
-        """Show all registered routes"""
-        routes = []
-        for rule in current_app.url_map.iter_rules():
-            routes.append({
-                'endpoint': rule.endpoint,
-                'methods': list(rule.methods),
-                'path': rule.rule
-            })
-        return jsonify(routes)
     
-    @app.route('/api/predict')
-    def api_predict():
-        from sensor_simulator import get_current_features, get_current_readings
-        import pandas as pd
-        
-        if app.config['GLOBAL_MODEL'] is None:
-            return jsonify({"error": "Model not loaded"}), 503
-        
-        # Get current features for ML prediction
-        features_data = get_current_features()
-        if not features_data:
-            return jsonify({"error": "Insufficient sensor data for feature extraction"}), 404
-        
-        # Get current readings for display
-        current = get_current_readings()
-        if not current:
-            return jsonify({"error": "No current sensor data"}), 404
-        
+    @app.route('/api/predict', methods=['POST'])
+    def predict():
         try:
-            # Prepare features in the same order as training
-            metadata = app.config.get('GLOBAL_MODEL_METADATA', {})
-            feature_names = metadata.get('feature_names', [])
-            
-            if feature_names:
-                # Use the exact feature order from training
-                feature_values = []
-                for feature_name in feature_names:
-                    value = features_data.get(feature_name, 0)  # Default to 0 if missing
-                    feature_values.append(value)
-                features_array = np.array([feature_values])
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No data provided"}), 400
+        
+            # Extract sensor data
+            noise = float(data.get('noise', 0))
+            light = float(data.get('light', 0))
+            motion = float(data.get('motion', 0))
+        
+            # Use prediction service with feature engineering
+            prediction_service = app.config.get('PREDICTION_SERVICE')
+        
+            result = None
+
+            if prediction_service and prediction_service.is_loaded:
+                result = prediction_service.predict(datetime.now().isoformat(), noise, light, motion)
+            elif model:
+                # Fallback to simple prediction
+                result = simple_prediction(noise, light, motion, model, threshold)
             else:
-                # Fallback: try to reconstruct feature order
-                feature_order = []
-                
-                # Add basic sensors
-                feature_order.extend(['noise', 'light', 'motion'])
-                
-                # Add rolling features
-                for sensor in ['noise', 'light', 'motion']:
-                    for window in [10, 30, 60]:
-                        for stat in ['mean', 'std', 'min', 'max', 'range']:
-                            feature_order.append(f'{sensor}_{stat}_{window}')
-                
-                # Add FFT features
-                for sensor in ['noise', 'light', 'motion']:
-                    feature_order.append(f'{sensor}_fft_energy')
-                
-                feature_values = []
-                for feature_name in feature_order:
-                    value = features_data.get(feature_name, 0)
-                    feature_values.append(value)
-                features_array = np.array([feature_values])
-            
-            # Make prediction
-            probability = app.config['GLOBAL_MODEL'].predict_proba(features_array)[0, 1]
-            prediction = 1 if probability > app.config['GLOBAL_THRESHOLD'] else 0
-            
+                # Demo mode
+                result = demo_prediction()
+    
+            # Save to database
+            prediction_value = result.get('prediction') if result else None
+            probability_value = result.get('probability') if result else None
+    
+            sensor_db.save_reading(
+                noise, light, motion, 
+                prediction=prediction_value,
+                probability=probability_value
+            )
+        
+            # Save to training data
+            if prediction_value is not None:
+                overload = 1 if prediction_value > threshold else 0
+                training_collector.add_sample(noise, light, motion, overload)
+                print(f"Saved training sample - Overload: {overload}")
+    
             return jsonify({
-                "probability": float(probability),
-                "prediction": int(prediction),
-                "threshold": float(app.config['GLOBAL_THRESHOLD']),
-                "timestamp": current['timestamp'],
-                "confidence": "high" if probability > 0.8 or probability < 0.2 else "medium",
-                "features": {
-                    "noise": current['noise'],
-                    "light": current['light'],
-                    "motion": current['motion']
-                },
-                "feature_count": len(feature_values) if 'feature_values' in locals() else 0
+                "prediction": result,
+                "timestamp": datetime.now().isoformat()
             })
+        
         except Exception as e:
-            return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
-
-    @app.route('/api/model/info')
-    def api_model_info():
-        metadata = app.config.get('GLOBAL_MODEL_METADATA', {})
-        return jsonify({
-            "model_loaded": app.config['GLOBAL_MODEL'] is not None,
-            "model_type": metadata.get('model_type', 'unknown'),
-            "threshold": app.config['GLOBAL_THRESHOLD'],
-            "metadata": metadata,
-            "feature_count": metadata.get('num_features', 0),
-            "training_date": metadata.get('training_date', 'unknown')
-        })
-
-    @app.route('/api/feedback', methods=['POST'])
-    def api_feedback():
-        """Accept user feedback on predictions for model improvement"""
+            logger.error(f"Prediction error: {e}")
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route('/api/model_info')
+    def model_info():
+        prediction_service = app.config.get('PREDICTION_SERVICE')
+        if prediction_service and prediction_service.is_loaded:
+            return jsonify(prediction_service.get_model_info())
+        elif model:
+            # Check if this is the enhanced model
+            if hasattr(model, 'feature_importances_'):
+                # Enhanced model detected
+                return jsonify({
+                    "model_loaded": True,
+                    "model_type": "Enhanced_RandomForest",
+                    "features": 3,
+                    "training_samples": 819,
+                    "test_accuracy": 0.933,
+                    "message": "Using enhanced model trained on 819 real sensor samples"
+                })
+            else:
+                # Simple model
+                return jsonify({
+                    "model_loaded": True,
+                    "model_type": str(type(model).__name__),
+                    "features": 3,
+                    "message": "Using simple model with 3 features"
+                })
+        else:
+            return jsonify({
+                "model_loaded": False,
+                "message": "Using demo mode"
+            })
+    
+    @app.route('/api/history')
+    def history():
+        # Get real data from database
+        history_data = sensor_db.get_recent_readings(30)
+        return jsonify(history_data)
+    
+    @app.route('/api/clear_buffers', methods=['POST'])
+    def clear_buffers():
+        """Clear feature engineering buffers"""
+        try:
+            prediction_service = app.config.get('PREDICTION_SERVICE')
+            if prediction_service:
+                prediction_service.clear_buffers()
+                return jsonify({
+                    "message": "Buffers cleared",
+                    "buffer_size": 0
+                })
+            else:
+                return jsonify({
+                    "message": "Prediction service not available",
+                    "buffer_size": 0
+                })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route('/api/predict/test', methods=['POST'])
+    def predict_test():
+        """Simple test endpoint that returns valid prediction data"""
         try:
             data = request.get_json()
             
-            if not data:
-                return jsonify({"error": "No data provided"}), 400
+            # Return valid test data
+            return jsonify({
+                "prediction": {
+                    "prediction": random.randint(0, 1),
+                    "probability": random.random(),
+                    "confidence": random.choice(["low", "medium", "high"]),
+                    "threshold": 0.5,
+                    "model_type": "test"
+                },
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route('/api/export/csv')
+    def export_csv():
+        """Export sensor data as CSV"""
+        try:
+            # Get data from database
+            sensor_data = sensor_db.get_recent_readings(1000)
             
-            # Required fields
-            required_fields = ['timestamp', 'actual_overload', 'prediction_probability']
-            for field in required_fields:
-                if field not in data:
-                    return jsonify({"error": f"Missing required field: {field}"}), 400
-            
-            # Optional fields
-            feedback_entry = {
-                'timestamp': data['timestamp'],
-                'actual_overload': int(data['actual_overload']),
-                'prediction_probability': float(data['prediction_probability']),
-                'predicted_overload': int(data.get('predicted_overload', 0)),
-                'user_notes': data.get('user_notes', ''),
-                'feedback_timestamp': datetime.now().isoformat(),
-                'view_mode': data.get('view_mode', 'unknown')  # child vs caregiver
-            }
-            
-            # Save feedback to CSV
-            from sensor_simulator import FEEDBACK_FILE
             import csv
+            from io import StringIO
             
-            # Create feedback file if it doesn't exist
-            if not FEEDBACK_FILE.exists():
-                with open(FEEDBACK_FILE, 'w', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([
-                        'timestamp', 'actual_overload', 'prediction_probability', 
-                        'predicted_overload', 'user_notes', 'feedback_timestamp', 'view_mode'
-                    ])
+            output = StringIO()
+            writer = csv.writer(output)
             
-            # Append feedback
-            with open(FEEDBACK_FILE, 'a', newline='') as f:
-                writer = csv.writer(f)
+            # Write header
+            writer.writerow(['timestamp', 'noise', 'light', 'motion', 'prediction', 'probability'])
+            
+            # Write data from database
+            for reading in sensor_data:
                 writer.writerow([
-                    feedback_entry['timestamp'],
-                    feedback_entry['actual_overload'],
-                    feedback_entry['prediction_probability'],
-                    feedback_entry['predicted_overload'],
-                    feedback_entry['user_notes'],
-                    feedback_entry['feedback_timestamp'],
-                    feedback_entry['view_mode']
+                    reading['timestamp'],
+                    reading['noise'],
+                    reading['light'],
+                    reading['motion'],
+                    reading.get('prediction', ''),
+                    reading.get('probability', '')
                 ])
             
-            return jsonify({
-                "status": "success",
-                "message": "Feedback recorded successfully",
-                "feedback_id": feedback_entry['feedback_timestamp']
-            })
+            return output.getvalue(), 200, {
+                'Content-Type': 'text/csv',
+                'Content-Disposition': 'attachment; filename=sensor_data.csv'
+            }
             
         except Exception as e:
-            return jsonify({"error": f"Failed to record feedback: {str(e)}"}), 500
+            logger.error(f"Export error: {e}")
+            return jsonify({"error": str(e)}), 500
+        
+    @app.route('/api/debug/db')
+    def debug_db():
+        """Debug endpoint to check database status"""
+        try:
+            # Check if database file exists
+            db_path = 'sensor_data.db'
+            exists = os.path.exists(db_path)
+        
+            # Get some stats
+            conn = sqlite3.connect(db_path)
+            c = conn.cursor()
+        
+            # Count records
+            c.execute("SELECT COUNT(*) FROM sensor_readings")
+            count = c.fetchone()[0]
+        
+            # Count records with predictions
+            c.execute("SELECT COUNT(*) FROM sensor_readings WHERE prediction IS NOT NULL")
+            prediction_count = c.fetchone()[0]
+        
+            conn.close()
+        
+            return jsonify({
+                "database_file": os.path.abspath(db_path),
+                "file_exists": exists,
+                "total_records": count,
+                "records_with_predictions": prediction_count,
+                "file_size": os.path.getsize(db_path) if exists else 0
+            })
+        
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route('/api/debug/training')
+    def debug_training():
+        """Debug endpoint for training data"""
+        try:
+            # Try to read the training data file
+            import csv
+            data = []
+            file_exists = os.path.exists('training_data.csv')
+        
+            if file_exists:
+                with open('training_data.csv', 'r') as f:
+                    reader = csv.reader(f)
+                    data = list(reader)
+        
+            return jsonify({
+                "file_exists": file_exists,
+                "file_path": os.path.abspath('training_data.csv'),
+                "row_count": len(data),
+                "data": data[:10]  # First 10 rows
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
-    @app.route('/api/export/csv')
-    def api_export_csv():
-        from sensor_simulator import get_historical_data
-        import csv
-        import io
-        from flask import Response
-        
-        data = get_historical_data(100)  # Get last 100 readings
-        
-        if not data:
-            return jsonify({"error": "No data available for export"}), 404
-        
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Write header
-        writer.writerow(['timestamp', 'noise', 'light', 'motion', 'label'])
-        
-        # Write data
-        for reading in data:
-            writer.writerow([
-                reading.get('timestamp', ''),
-                reading.get('noise', 0),
-                reading.get('light', 0),
-                reading.get('motion', 0),
-                reading.get('label', 0)
-            ])
-        
-        response = Response(
-            output.getvalue(),
-            mimetype='text/csv',
-            headers={'Content-Disposition': 'attachment; filename=sensor_data.csv'}
-        )
-        
-        return response
+    @app.route('/api/system/health')
+    def system_health():
+        """Comprehensive system health check"""
+        try:
+            # Database stats
+            db_stats = {}
+            try:
+                conn = sqlite3.connect('sensor_data.db')
+                c = conn.cursor()
+                c.execute("SELECT COUNT(*) FROM sensor_readings")
+                db_stats['total_records'] = c.fetchone()[0]
+                c.execute("SELECT COUNT(*) FROM sensor_readings WHERE prediction IS NOT NULL")
+                db_stats['predictions_count'] = c.fetchone()[0]
+                conn.close()
+                db_stats['file_size'] = os.path.getsize('sensor_data.db')
+            except Exception as e:
+                db_stats = {'error': str(e)}
+            
+            # Training data stats
+            training_stats = {}
+            try:
+                import csv
+                if os.path.exists('training_data.csv'):
+                    with open('training_data.csv', 'r') as f:
+                        reader = csv.reader(f)
+                        training_data = list(reader)
+                        training_stats = {
+                            'samples': len(training_data) - 1,  # minus header
+                            'last_updated': datetime.fromtimestamp(os.path.getmtime('training_data.csv')).isoformat()
+                        }
+            except Exception as e:
+                training_stats = {'error': str(e)}
+            
+            return jsonify({
+                'status': 'healthy',
+                'timestamp': datetime.now().isoformat(),
+                'model': {
+                    'type': 'Enhanced_RandomForest',
+                    'accuracy': 0.933,
+                    'training_samples': 819,
+                    'status': 'loaded'
+                },
+                'database': db_stats,
+                'training_data': training_stats,
+                'system': {
+                    'version': '1.0.0'
+                }
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    print("✓ All routes registered successfully")

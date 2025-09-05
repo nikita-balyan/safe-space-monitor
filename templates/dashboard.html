@@ -6,10 +6,10 @@
 <div class="container-fluid py-4">
     
     <!-- Child View -->
-    <div id="childView" class="view-container {% if view_mode != 'child' %}d-none{% endif %}">
+    <div id="childView" class="view-container">
         <div class="row justify-content-center">
             <div class="col-12 col-md-8 col-lg-6">
-                <div class="child-status-card text-center p-5 rounded-4 shadow-lg">
+                <div class="child-status-card text-center p-5 rounded-4 shadow-lg status-good" id="childStatusCard">
                     <div class="status-emoji mb-4" id="statusEmoji">😊</div>
                     <h1 class="status-text mb-4" id="statusText">All Good!</h1>
                     <div class="status-details" id="statusDetails">
@@ -22,23 +22,28 @@
         <!-- Simple sensor cards for children -->
         <div class="row mt-4 justify-content-center">
             <div class="col-4 col-md-3">
-                <div class="child-sensor-card text-center p-3 rounded-3">
+                <div class="child-sensor-card text-center p-3 rounded-3 status-good">
                     <div class="sensor-icon mb-2">🔊</div>
                     <div class="sensor-label">Sounds</div>
+                    <div class="sensor-value" id="childNoiseValue">0</div>
                     <div class="sensor-status" id="childNoiseStatus">Good</div>
                 </div>
             </div>
+            
             <div class="col-4 col-md-3">
-                <div class="child-sensor-card text-center p-3 rounded-3">
+                <div class="child-sensor-card text-center p-3 rounded-3 status-good">
                     <div class="sensor-icon mb-2">💡</div>
                     <div class="sensor-label">Lights</div>
+                    <div class="sensor-value" id="childLightValue">0</div>
                     <div class="sensor-status" id="childLightStatus">Good</div>
                 </div>
             </div>
+            
             <div class="col-4 col-md-3">
-                <div class="child-sensor-card text-center p-3 rounded-3">
+                <div class="child-sensor-card text-center p-3 rounded-3 status-good">
                     <div class="sensor-icon mb-2">🏃</div>
                     <div class="sensor-label">Movement</div>
+                    <div class="sensor-value" id="childMotionValue">0</div>
                     <div class="sensor-status" id="childMotionStatus">Good</div>
                 </div>
             </div>
@@ -46,7 +51,7 @@
     </div>
 
     <!-- Caregiver View -->
-    <div id="caregiverView" class="view-container {% if view_mode != 'caregiver' %}d-none{% endif %}">
+    <div id="caregiverView" class="view-container d-none">
         
         <!-- Status Overview -->
         <div class="row mb-4">
@@ -67,7 +72,7 @@
                                         <i class="fas fa-volume-up text-primary me-2"></i>
                                         <span class="fw-bold">Noise Level</span>
                                     </div>
-                                    <div class="sensor-value mb-2">
+                                    <div class="sensor-value-display mb-2">
                                         <span id="noiseValue">--</span> <small class="text-muted">dB</small>
                                     </div>
                                     <div class="progress mb-2" style="height: 8px;">
@@ -86,7 +91,7 @@
                                         <i class="fas fa-lightbulb text-warning me-2"></i>
                                         <span class="fw-bold">Light Level</span>
                                     </div>
-                                    <div class="sensor-value mb-2">
+                                    <div class="sensor-value-display mb-2">
                                         <span id="lightValue">--</span> <small class="text-muted">lux</small>
                                     </div>
                                     <div class="progress mb-2" style="height: 8px;">
@@ -105,7 +110,7 @@
                                         <i class="fas fa-running text-success me-2"></i>
                                         <span class="fw-bold">Motion Level</span>
                                     </div>
-                                    <div class="sensor-value mb-2">
+                                    <div class="sensor-value-display mb-2">
                                         <span id="motionValue">--</span> <small class="text-muted">units</small>
                                     </div>
                                     <div class="progress mb-2" style="height: 8px;">
@@ -114,6 +119,14 @@
                                     <small class="text-muted">
                                         Warning: 50 | Danger: 80
                                     </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12 text-center">
+                                <div class="system-status">
+                                    <i class="fas fa-circle text-success me-2" id="statusIndicator"></i>
+                                    <span id="systemStatusText">System Online</span>
                                 </div>
                             </div>
                         </div>
@@ -130,14 +143,25 @@
                     <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">
                             <i class="fas fa-chart-line me-2"></i>
-                            Historical Trends (Last 60 seconds)
+                            Historical Trends (Last 30 readings)
                         </h6>
-                        <button class="btn btn-sm btn-outline-primary" id="exportDataBtn">
-                            <i class="fas fa-download me-1"></i>Export CSV
-                        </button>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-2" id="refreshDataBtn">
+                                <i class="fas fa-sync-alt me-1"></i>Refresh
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" id="exportDataBtn">
+                                <i class="fas fa-download me-1"></i>Export CSV
+                            </button>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-secondary me-2" id="readingsCount">0</span>
+                            <span>Readings</span>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <canvas id="sensorChart" height="120"></canvas>
+                        <div class="chart-container">
+                            <canvas id="sensorChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -145,19 +169,25 @@
             <!-- Alert Panel -->
             <div class="col-lg-4 mb-4">
                 <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             Alert History
                         </h6>
+                        <span class="badge bg-danger" id="alertsCount">0</span>
                     </div>
-                    <div class="card-body">
-                        <div id="alertList" class="alert-list">
-                            <div class="text-muted text-center">
+                    <div class="card-body p-0">
+                        <div id="alertList" class="alert-list p-3">
+                            <div class="text-muted text-center py-4">
                                 <i class="fas fa-check-circle fa-2x mb-2"></i>
                                 <p>No alerts detected</p>
                             </div>
                         </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <button class="btn btn-sm btn-outline-secondary w-100" id="clearAlertsBtn">
+                            <i class="fas fa-trash me-1"></i>Clear All Alerts
+                        </button>
                     </div>
                 </div>
             </div>
@@ -177,19 +207,19 @@
                         <div class="row text-center">
                             <div class="col-4">
                                 <div class="stat-widget">
-                                    <div class="stat-value" id="uptimeValue">--</div>
+                                    <div class="stat-value" id="uptimeValue">00:00:00</div>
                                     <div class="stat-label">Uptime</div>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="stat-widget">
-                                    <div class="stat-value" id="readingsCount">--</div>
+                                    <div class="stat-value" id="readingsCountValue">0</div>
                                     <div class="stat-label">Readings</div>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="stat-widget">
-                                    <div class="stat-value" id="alertsCount">0</div>
+                                    <div class="stat-value" id="alertsCountValue">0</div>
                                     <div class="stat-label">Alerts</div>
                                 </div>
                             </div>
@@ -207,12 +237,13 @@
                         </h6>
                     </div>
                     <div class="card-body text-center">
-                        <div id="predictionWidget">
+                        <div id="predictionWidget" class="prediction-widget low-risk">
+                            <i class="fas fa-brain fa-3x mb-3"></i>
                             <div class="prediction-probability mb-2">
-                                <span id="predictionValue">--</span>%
+                                <span id="predictionValue">0</span>%
                             </div>
-                            <div class="prediction-status" id="predictionStatus">
-                                Analyzing...
+                            <div class="prediction-status text-success" id="predictionStatus">
+                                Normal Conditions
                             </div>
                         </div>
                     </div>

@@ -26,12 +26,12 @@ body {
     justify-content: center;
 }
 
-.child-status-card.warning {
+.child-status-card.status-warning {
     border-color: var(--warning-color);
     background: #fef3c7;
 }
 
-.child-status-card.danger {
+.child-status-card.status-danger {
     border-color: var(--danger-color);
     background: #fee2e2;
 }
@@ -64,14 +64,19 @@ body {
     box-shadow: var(--shadow);
 }
 
-.child-sensor-card.warning {
+.child-sensor-card.status-warning {
     border-color: var(--warning-color);
     background: #fef3c7;
 }
 
-.child-sensor-card.danger {
+.child-sensor-card.status-danger {
     border-color: var(--danger-color);
     background: #fee2e2;
+}
+
+.child-sensor-card.status-good {
+    border-color: var(--success-color);
+    background: #d1fae5;
 }
 
 .sensor-icon {
@@ -81,6 +86,14 @@ body {
 .sensor-label {
     font-weight: bold;
     color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.sensor-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
 }
 
 .sensor-status {
@@ -146,12 +159,12 @@ body {
     font-size: 0.875rem;
 }
 
-.alert-item.warning {
+.alert-item.alert-warning {
     border-left-color: var(--warning-color);
     background: #fef3c7;
 }
 
-.alert-item.danger {
+.alert-item.alert-danger {
     border-left-color: var(--danger-color);
     background: #fee2e2;
 }
@@ -180,55 +193,50 @@ body {
 }
 
 /* Prediction Widget */
+.prediction-widget {
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+}
+
 .prediction-probability {
     font-size: 2.5rem;
     font-weight: bold;
-    color: var(--primary-color);
     transition: color 0.3s ease;
 }
 
 .prediction-status {
     font-size: 1rem;
-    color: #6b7280;
     font-weight: 500;
     transition: color 0.3s ease;
 }
 
 /* Prediction color states */
-.prediction-status.text-success {
-    color: var(--success-color) !important;
-}
-
-.prediction-status.text-warning {
-    color: var(--warning-color) !important;
-}
-
-.prediction-status.text-danger {
-    color: var(--danger-color) !important;
-}
-
-/* Enhanced prediction widget styling */
-#predictionWidget {
-    padding: 1rem;
-    border-radius: var(--border-radius);
-    transition: all 0.3s ease;
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    border: 2px solid #e5e7eb;
-}
-
-#predictionWidget.high-risk {
+.prediction-widget.high-risk {
     background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    border-color: var(--danger-color);
+    border: 2px solid var(--danger-color);
 }
 
-#predictionWidget.medium-risk {
+.prediction-widget.high-risk .prediction-probability {
+    color: var(--danger-color);
+}
+
+.prediction-widget.medium-risk {
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-color: var(--warning-color);
+    border: 2px solid var(--warning-color);
 }
 
-#predictionWidget.low-risk {
+.prediction-widget.medium-risk .prediction-probability {
+    color: var(--warning-color);
+}
+
+.prediction-widget.low-risk {
     background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border-color: var(--success-color);
+    border: 2px solid var(--success-color);
+}
+
+.prediction-widget.low-risk .prediction-probability {
+    color: var(--success-color);
 }
 
 /* Navigation */
@@ -270,6 +278,12 @@ body {
     animation: fadeIn 0.5s ease-out;
 }
 
+/* Chart Container */
+.chart-container {
+    height: 300px;
+    position: relative;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .status-emoji {
@@ -286,6 +300,10 @@ body {
     
     .child-status-card {
         padding: 2rem !important;
+    }
+    
+    .prediction-probability {
+        font-size: 2rem;
     }
 }
 
@@ -317,11 +335,6 @@ body {
     box-shadow: var(--shadow);
 }
 
-/* Chart Container */
-#sensorChart {
-    max-height: 300px;
-}
-
 /* Utility Classes */
 .glass-effect {
     background: rgba(255, 255, 255, 0.1);
@@ -334,4 +347,9 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* View containers */
+.view-container {
+    transition: opacity 0.3s ease;
 }
