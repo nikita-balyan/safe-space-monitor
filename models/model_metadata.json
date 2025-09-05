@@ -1,8 +1,0 @@
-{
-  "model_type": "RandomForest",
-  "training_date": "2025-08-31T23:05:44.013252",
-  "accuracy": 1.0,
-  "precision": 1.0,
-  "recall": 1.0,
-  "f1_score": 1.0
-}
