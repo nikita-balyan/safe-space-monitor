@@ -1,18 +1,31 @@
-// Dashboard JavaScript for Safe Space Monitor
+// Dashboard JavaScript for Safe Space Monitor with Recommendation System
 class SensorDashboard {
     constructor() {
-        this.currentView = 'child';
+        this.currentView = 'caregiver';
         this.sensorChart = null;
         this.alerts = [];
         this.isOnline = true;
         this.startTime = Date.now();
         this.readingsCount = 0;
         this.pollingInterval = null;
+        this.lastRecommendationTime = 0;
+        this.recommendationCooldown = 30000; // 30 seconds between recommendations
+        this.currentOverloadType = null;
+        this.historicalData = [];
+        this.isInitialized = false;
+        
+        this.thresholds = {
+            noise: { warning: 70, danger: 100, max: 120 },
+            light: { warning: 3000, danger: 8000, max: 10000 },
+            motion: { warning: 50, danger: 80, max: 100 }
+        };
         
         this.init();
     }
 
     init() {
+        if (this.isInitialized) return;
+        
         this.setupEventListeners();
         this.setupChart();
         this.startDataPolling();
@@ -27,17 +40,24 @@ class SensorDashboard {
         
         // Show initial toast
         this.showToast('System Active', 'Sensors are online and monitoring', 'success');
+        
+        this.isInitialized = true;
     }
 
     setupEventListeners() {
         // View switching
-        document.getElementById('childViewBtn').addEventListener('click', () => {
-            this.switchView('child');
-        });
+        const childViewBtn = document.getElementById('childViewBtn');
+        const caregiverViewBtn = document.getElementById('caregiverViewBtn');
         
-        document.getElementById('caregiverViewBtn').addEventListener('click', () => {
-            this.switchView('caregiver');
-        });
+        if (childViewBtn && caregiverViewBtn) {
+            childViewBtn.addEventListener('click', () => {
+                this.switchView('child');
+            });
+            
+            caregiverViewBtn.addEventListener('click', () => {
+                this.switchView('caregiver');
+            });
+        }
 
         // Export data
         const exportBtn = document.getElementById('exportDataBtn');
@@ -62,18 +82,37 @@ class SensorDashboard {
                 this.clearAlerts();
             });
         }
+
+        // Add event delegation for strategy feedback buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.feedback-btn')) {
+                this.handleStrategyFeedback(e);
+            }
+        });
     }
 
     switchView(view) {
+        if (this.currentView === view) return;
+        
         this.currentView = view;
         
         // Update button states
-        document.getElementById('childViewBtn').classList.toggle('active', view === 'child');
-        document.getElementById('caregiverViewBtn').classList.toggle('active', view === 'caregiver');
+        const childViewBtn = document.getElementById('childViewBtn');
+        const caregiverViewBtn = document.getElementById('caregiverViewBtn');
+        
+        if (childViewBtn && caregiverViewBtn) {
+            childViewBtn.classList.toggle('active', view === 'child');
+            caregiverViewBtn.classList.toggle('active', view === 'caregiver');
+        }
         
         // Update view visibility
-        document.getElementById('childView').classList.toggle('d-none', view !== 'child');
-        document.getElementById('caregiverView').classList.toggle('d-none', view !== 'caregiver');
+        const childView = document.getElementById('childView');
+        const caregiverView = document.getElementById('caregiverView');
+        
+        if (childView && caregiverView) {
+            childView.classList.toggle('d-none', view !== 'child');
+            caregiverView.classList.toggle('d-none', view !== 'caregiver');
+        }
         
         // Update URL without reload
         const url = new URL(window.location);
@@ -84,7 +123,7 @@ class SensorDashboard {
         if (view === 'caregiver') {
             setTimeout(() => {
                 this.setupChart();
-                this.startDataPolling();
+                this.updateChart(this.historicalData);
             }, 100);
         }
     }
@@ -99,106 +138,120 @@ class SensorDashboard {
             this.sensorChart = null;
         }
 
-        // Check if canvas context is still valid
-        if (ctx && ctx.getContext) {
-            this.sensorChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'Noise (dB)',
-                            data: [],
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.4,
-                            fill: false,
-                            borderWidth: 2
-                        },
-                        {
-                            label: 'Light (lux/100)',
-                            data: [],
-                            borderColor: '#f59e0b',
-                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                            tension: 0.4,
-                            fill: false,
-                            borderWidth: 2
-                        },
-                        {
-                            label: 'Motion',
-                            data: [],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            tension: 0.4,
-                            fill: false,
-                            borderWidth: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Time'
-                            },
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Value'
-                            },
-                            min: 0,
-                            max: 120,
-                            ticks: {
-                                stepSize: 20
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20
-                            }
-                        },
-                        tooltip: {
-                            enabled: true,
-                            mode: 'index',
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toFixed(1);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    },
-                    animation: {
-                        duration: 750,
-                        easing: 'easeInOutQuart'
-                    }
+        // Check if the canvas is already being used by another chart instance
+        if (Chart.instances && Chart.instances.length > 0) {
+            Chart.instances.forEach(instance => {
+                if (instance.canvas && instance.canvas.id === 'sensorChart') {
+                    instance.destroy();
                 }
             });
         }
+
+        this.sensorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Noise (dB)',
+                        data: [],
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: 'Light (lux/100)',
+                        data: [],
+                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: 'Motion',
+                        data: [],
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        },
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 8
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Value'
+                        },
+                        beginAtZero: true,
+                        suggestedMax: 120
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(1);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
     }
 
     async fetchSensorData() {
@@ -214,7 +267,7 @@ class SensorDashboard {
         } catch (error) {
             console.error('Failed to fetch sensor data:', error);
             this.isOnline = false;
-            this.showToast('Connection Error', 'Unable to fetch sensor data', 'danger');
+            this.showToast('Connection Error', 'Unable to fetch sensor data', 'error');
             return null;
         }
     }
@@ -231,35 +284,73 @@ class SensorDashboard {
         }
     }
 
-    async fetchPrediction() {
+    async fetchPrediction(sensorData) {
         try {
-            // First get current data
-            const currentData = await this.fetchSensorData();
-            if (!currentData) return null;
-            
-            // Use the main prediction endpoint
             const response = await fetch('/api/predict', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    noise: currentData.noise,
-                    light: currentData.light,
-                    motion: currentData.motion
+                    noise: sensorData?.noise || 0,
+                    light: sensorData?.light || 0,
+                    motion: sensorData?.motion || 0
                 })
             });
-            
+        
             if (!response.ok) {
                 console.error('Prediction API error:', response.status);
                 return null;
             }
-            
-            const predictionData = await response.json();
-            console.log('Prediction API response:', predictionData);
-            return predictionData;
+        
+            return await response.json();
         } catch (error) {
             console.error('Failed to fetch prediction:', error);
+            return null;
+        }
+    }
+
+    async getRecommendations(overloadType) {
+        try {
+            const now = Date.now();
+            if (now - this.lastRecommendationTime < this.recommendationCooldown) {
+                return []; // Skip if in cooldown period
+            }
+
+            const response = await fetch(`/api/recommendations?type=${overloadType}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            this.lastRecommendationTime = now;
+            
+            return data.recommendations || [];
+        } catch (error) {
+            console.error('Failed to fetch recommendations:', error);
+            return [];
+        }
+    }
+
+    async recordFeedback(strategyId, wasHelpful) {
+        try {
+            const response = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    strategy_id: strategyId,
+                    helpful: wasHelpful
+                })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+            this.showToast('Feedback Recorded', 'Thank you for your feedback!', 'success');
+            return result;
+        } catch (error) {
+            console.error('Failed to record feedback:', error);
+            this.showToast('Feedback Error', 'Could not record feedback', 'error');
             return null;
         }
     }
@@ -269,64 +360,77 @@ class SensorDashboard {
         
         const { noise, light, motion } = data;
         
-        // Get AI prediction for enhanced child view
-        const predictionResponse = await this.fetchPrediction();
+        // Update sensor values display
+        this.updateSensorValueDisplay('childNoiseValue', noise);
+        this.updateSensorValueDisplay('childLightValue', light);
+        this.updateSensorValueDisplay('childMotionValue', motion);
         
-        // Determine overall status using both threshold-based and AI prediction
-        const dangerThresholds = { noise: 100, light: 8000, motion: 80 };
-        const warningThresholds = { noise: 70, light: 3000, motion: 50 };
+        // Update sensor status
+        this.updateChildSensorCard('childNoiseStatus', noise, this.thresholds.noise.warning, this.thresholds.noise.danger);
+        this.updateChildSensorCard('childLightStatus', light, this.thresholds.light.warning, this.thresholds.light.danger);
+        this.updateChildSensorCard('childMotionStatus', motion, this.thresholds.motion.warning, this.thresholds.motion.danger);
         
-        let overallStatus = 'good';
-        let statusEmoji = '😊';
-        let statusText = 'All Good!';
-        let statusDetails = 'Everything looks perfect';
-        
-        // Check for danger conditions (sensors or AI prediction)
-        let aiDanger = false;
-        let aiHighRisk = false;
-        
-        if (predictionResponse && predictionResponse.prediction) {
-            const predictionData = predictionResponse.prediction;
-            aiDanger = predictionData.prediction === 1;
-            aiHighRisk = predictionData.probability > 0.7;
+        // Check for overload and update main status
+        const overloadType = this.checkForOverload(data);
+        if (overloadType) {
+            this.updateChildStatus('warning', '😟', 'Getting overwhelmed', `${overloadType} level is high`);
+            
+            // Get and show recommendation for child
+            const recommendations = await this.getRecommendations(overloadType);
+            if (recommendations.length > 0) {
+                this.showChildSuggestion(recommendations[0]);
+            }
+        } else {
+            this.updateChildStatus('good', '😊', 'All Good!', 'Everything looks perfect');
+            this.hideChildSuggestion();
         }
-        
-        if (noise > dangerThresholds.noise || light > dangerThresholds.light || motion > dangerThresholds.motion || aiDanger) {
-            overallStatus = 'danger';
-            statusEmoji = '😟';
-            statusText = 'Needs Attention!';
-            statusDetails = aiDanger ? 'Smart monitor says be careful' : 'Something might be too much';
-        }
-        // Check for warning conditions (sensors or AI prediction)
-        else if (noise > warningThresholds.noise || light > warningThresholds.light || motion > warningThresholds.motion || aiHighRisk) {
-            overallStatus = 'warning';
-            statusEmoji = '😐';
-            statusText = 'Be Careful';
-            statusDetails = aiHighRisk ? 'Smart monitor says watch out' : 'Might be uncomfortable';
-        }
-        
-        // Update main status card
+    }
+
+    updateChildStatus(status, emoji, text, details) {
         const statusCard = document.getElementById('childStatusCard');
         const emojiEl = document.getElementById('statusEmoji');
         const textEl = document.getElementById('statusText');
         const detailsEl = document.getElementById('statusDetails');
         
         if (statusCard && emojiEl && textEl && detailsEl) {
-            statusCard.className = `child-status-card text-center p-5 rounded-4 shadow-lg status-${overallStatus}`;
-            emojiEl.textContent = statusEmoji;
-            textEl.textContent = statusText;
-            detailsEl.textContent = statusDetails;
+            statusCard.className = `child-view-card text-center p-5 rounded-4 shadow-lg status-${status}`;
+            emojiEl.textContent = emoji;
+            textEl.textContent = text;
+            detailsEl.textContent = details;
         }
-        
-        // Update individual sensor cards
-        this.updateChildSensorCard('childNoiseStatus', noise, warningThresholds.noise, dangerThresholds.noise);
-        this.updateChildSensorCard('childLightStatus', light, warningThresholds.light, dangerThresholds.light);
-        this.updateChildSensorCard('childMotionStatus', motion, warningThresholds.motion, dangerThresholds.motion);
-        
-        // Update sensor values display
-        this.updateSensorValueDisplay('childNoiseValue', noise);
-        this.updateSensorValueDisplay('childLightValue', light);
-        this.updateSensorValueDisplay('childMotionValue', motion);
+    }
+
+    showChildSuggestion(strategy) {
+        const suggestionEl = document.getElementById('childSuggestion');
+        if (suggestionEl) {
+            suggestionEl.innerHTML = `
+                <i class="fas ${this.getStrategyIcon(strategy)} me-2 text-warning"></i>
+                <strong>Try this:</strong> ${strategy.name}
+            `;
+            suggestionEl.style.display = 'block';
+        }
+    }
+
+    hideChildSuggestion() {
+        const suggestionEl = document.getElementById('childSuggestion');
+        if (suggestionEl) {
+            suggestionEl.style.display = 'none';
+        }
+    }
+
+    getStrategyIcon(strategy) {
+        const iconMap = {
+            'noise_cancelling_headphones': 'fa-headphones',
+            'white_noise': 'fa-wave-square',
+            'calming_music': 'fa-music',
+            'dim_lights': 'fa-lightbulb',
+            'blue_light_filter': 'fa-glasses',
+            'deep_pressure': 'fa-weight-hanging',
+            'deep_breathing': 'fa-wind',
+            'counting_exercise': 'fa-calculator',
+            'default': 'fa-lightbulb'
+        };
+        return iconMap[strategy.id] || iconMap.default;
     }
 
     updateChildSensorCard(elementId, value, warningThreshold, dangerThreshold) {
@@ -355,26 +459,48 @@ class SensorDashboard {
         }
     }
 
-    updateCaregiverView(data) {
+    checkForOverload(data) {
+        const { noise, light, motion } = data;
+        
+        if (noise > this.thresholds.noise.danger) return 'auditory';
+        if (light > this.thresholds.light.danger) return 'visual';
+        if (motion > this.thresholds.motion.danger) return 'motion';
+        return null;
+    }
+
+    async updateCaregiverView(data) {
         if (!data) return;
         
         const { noise, light, motion } = data;
         
         // Update sensor values
-        this.updateSensorWidget('noise', noise, { warning: 70, danger: 100 }, 120);
-        this.updateSensorWidget('light', light, { warning: 3000, danger: 8000 }, 10000);
-        this.updateSensorWidget('motion', motion, { warning: 50, danger: 80 }, 100);
+        this.updateSensorWidget('noise', noise, this.thresholds.noise, this.thresholds.noise.max);
+        this.updateSensorWidget('light', light, this.thresholds.light, this.thresholds.light.max);
+        this.updateSensorWidget('motion', motion, this.thresholds.motion, this.thresholds.motion.max);
         
         // Check for alerts
         this.checkAndAddAlerts(data);
         
         // Update prediction
-        this.updatePrediction();
+        await this.updatePrediction();
+        
+        // Check for overload and get recommendations
+        const overloadType = this.checkForOverload(data);
+        if (overloadType && overloadType !== this.currentOverloadType) {
+            this.currentOverloadType = overloadType;
+            const recommendations = await this.getRecommendations(overloadType);
+            this.displayRecommendations(recommendations, overloadType);
+            this.showToast('Overload Detected', `${overloadType} levels are high. Showing recommendations.`, 'warning');
+        } else if (!overloadType && this.currentOverloadType) {
+            this.currentOverloadType = null;
+            this.clearRecommendations();
+        }
     }
 
     updateSensorWidget(type, value, thresholds, maxValue) {
         const valueEl = document.getElementById(`${type}Value`);
         const progressEl = document.getElementById(`${type}Progress`);
+        const labelEl = document.getElementById(`${type}Label`);
         
         if (valueEl) {
             valueEl.textContent = Math.round(value);
@@ -385,28 +511,24 @@ class SensorDashboard {
             progressEl.style.width = `${percentage}%`;
             
             // Update color based on thresholds
-            progressEl.className = 'progress-bar';
             if (value > thresholds.danger) {
-                progressEl.classList.add('bg-danger');
+                progressEl.className = 'progress-bar bg-danger';
+                if (labelEl) labelEl.className = 'sensor-label text-danger';
             } else if (value > thresholds.warning) {
-                progressEl.classList.add('bg-warning');
+                progressEl.className = 'progress-bar bg-warning';
+                if (labelEl) labelEl.className = 'sensor-label text-warning';
             } else {
-                progressEl.classList.add('bg-success');
+                progressEl.className = 'progress-bar bg-success';
+                if (labelEl) labelEl.className = 'sensor-label text-success';
             }
         }
     }
 
     checkAndAddAlerts(data) {
         const { noise, light, motion, timestamp } = data;
-        const thresholds = {
-            noise: { warning: 70, danger: 100 },
-            light: { warning: 3000, danger: 8000 },
-            motion: { warning: 50, danger: 80 }
-        };
 
-        // Check each sensor for alerts
         Object.entries({ noise, light, motion }).forEach(([sensor, value]) => {
-            const sensorThresholds = thresholds[sensor];
+            const sensorThresholds = this.thresholds[sensor];
             
             if (value > sensorThresholds.danger) {
                 this.addAlert(`${sensor.toUpperCase()} CRITICAL: ${Math.round(value)}`, 'danger', timestamp);
@@ -422,13 +544,13 @@ class SensorDashboard {
         // Avoid duplicate alerts
         const isDuplicate = this.alerts.some(existing => 
             existing.message === message && 
-            Date.now() - existing.id < 5000 // 5 second debounce
+            Date.now() - existing.id < 5000
         );
         
         if (isDuplicate) return;
         
         this.alerts.unshift(alert);
-        this.alerts = this.alerts.slice(0, 10); // Keep only last 10 alerts
+        this.alerts = this.alerts.slice(0, 10);
         
         this.renderAlerts();
         this.updateAlertsCount();
@@ -454,7 +576,7 @@ class SensorDashboard {
         }
         
         alertList.innerHTML = this.alerts.map(alert => `
-            <div class="alert-item alert-${alert.severity}">
+            <div class="alert-item alert alert-${alert.severity} mb-2">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <i class="fas fa-${alert.severity === 'danger' ? 'exclamation-triangle' : 'exclamation-circle'} me-2"></i>
@@ -475,69 +597,153 @@ class SensorDashboard {
         const widgetEl = document.getElementById('predictionWidget');
         
         if (predictionResponse && valueEl && statusEl && widgetEl) {
-            // Extract the prediction data from the response
             const predictionData = predictionResponse.prediction;
+            let probability = predictionData.probability || 0;
             
-            // Handle NaN or invalid probability values
-            let probability = predictionData.probability;
-            if (isNaN(probability) || !isFinite(probability)) {
-                console.warn('Invalid probability value:', probability);
-                probability = 0; // Default to 0 if invalid
+            if (isNaN(probability)) {
+                probability = 0;
             }
             
             const probabilityPercent = Math.round(probability * 100);
             valueEl.textContent = probabilityPercent;
             
-            // Remove existing risk classes
-            widgetEl.classList.remove('high-risk', 'medium-risk', 'low-risk');
-            
-            // Handle prediction
-            const predictionValue = predictionData.prediction;
-            
-            if (predictionValue === 1) {
-                statusEl.textContent = 'Overload Risk Detected';
-                statusEl.className = 'prediction-status text-danger';
-                widgetEl.classList.add('high-risk');
+            // Update prediction status
+            if (predictionData.prediction === 1) {
+                statusEl.textContent = 'Overload Risk';
+                statusEl.className = 'prediction-status text-danger fw-bold';
+                widgetEl.className = 'prediction-widget high-risk';
             } else if (probabilityPercent > 70) {
-                statusEl.textContent = 'Elevated Risk';
-                statusEl.className = 'prediction-status text-warning';
-                widgetEl.classList.add('medium-risk');
+                statusEl.textContent = 'High Risk';
+                statusEl.className = 'prediction-status text-warning fw-bold';
+                widgetEl.className = 'prediction-widget medium-risk';
             } else if (probabilityPercent > 30) {
-                statusEl.textContent = 'Low Risk';
+                statusEl.textContent = 'Moderate Risk';
                 statusEl.className = 'prediction-status text-warning';
-                widgetEl.classList.add('medium-risk');
+                widgetEl.className = 'prediction-widget medium-risk';
             } else {
                 statusEl.textContent = 'Normal Conditions';
                 statusEl.className = 'prediction-status text-success';
-                widgetEl.classList.add('low-risk');
-            }
-        } else {
-            // Handle case where prediction is not available
-            if (valueEl) valueEl.textContent = 'N/A';
-            if (statusEl) {
-                statusEl.textContent = 'Prediction Unavailable';
-                statusEl.className = 'prediction-status text-muted';
-            }
-            if (widgetEl) {
-                widgetEl.classList.remove('high-risk', 'medium-risk', 'low-risk');
+                widgetEl.className = 'prediction-widget low-risk';
             }
         }
+    }
+
+    async displayRecommendations(recommendations, overloadType) {
+        const container = document.getElementById('recommendationsList');
+        const countElement = document.getElementById('recommendationsCount');
+        
+        if (!recommendations || recommendations.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">No recommendations available</p>
+                </div>
+            `;
+            countElement.textContent = '0';
+            return;
+        }
+        
+        countElement.textContent = recommendations.length;
+        
+        let html = `
+            <div class="mb-3">
+                <small class="text-muted">For ${overloadType} overload:</small>
+            </div>
+        `;
+        
+        recommendations.forEach((strategy) => {
+            const successRate = Math.round((strategy.feedback_score || 0.5) * 100);
+            const emoji = strategy.emoji || '💡';
+            
+            html += `
+                <div class="card mb-3 strategy-card ${overloadType}" data-strategy-id="${strategy.id}">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-start">
+                            <span class="fs-4 me-3">${emoji}</span>
+                            <div class="flex-grow-1">
+                                <h6 class="card-title mb-1">${strategy.name}</h6>
+                                <p class="card-text small text-muted mb-2">${strategy.description}</p>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="badge bg-light text-dark small">
+                                            <i class="fas fa-star me-1 text-warning"></i>
+                                            ${successRate}% helpful
+                                        </span>
+                                    </div>
+                                    <div class="btn-group strategy-feedback" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-success feedback-btn" data-helpful="true">
+                                            <i class="fas fa-thumbs-up"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger feedback-btn" data-helpful="false">
+                                            <i class="fas fa-thumbs-down"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    clearRecommendations() {
+        const container = document.getElementById('recommendationsList');
+        const countElement = document.getElementById('recommendationsCount');
+        
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                <p class="text-success">No overload detected</p>
+                <small class="text-muted">Sensor levels are normal</small>
+            </div>
+        `;
+        countElement.textContent = '0';
+    }
+
+    async handleStrategyFeedback(event) {
+        const button = event.target.closest('.feedback-btn');
+        if (!button) return;
+        
+        const strategyCard = button.closest('.strategy-card');
+        const strategyId = strategyCard.dataset.strategyId;
+        const wasHelpful = button.dataset.helpful === 'true';
+        
+        // Visual feedback
+        if (wasHelpful) {
+            button.classList.remove('btn-outline-success');
+            button.classList.add('btn-success');
+        } else {
+            button.classList.remove('btn-outline-danger');
+            button.classList.add('btn-danger');
+        }
+        
+        // Disable both buttons
+        strategyCard.querySelectorAll('.feedback-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+        
+        // Record feedback
+        await this.recordFeedback(strategyId, wasHelpful);
     }
 
     updateChart(historicalData) {
         if (!this.sensorChart || !historicalData || !historicalData.length) return;
         
-        // Prepare data for chart
+        // Store historical data for later use
+        this.historicalData = historicalData;
+        
         const labels = historicalData.map(reading => {
-            const date = new Date(reading.timestamp);
-            return date.toLocaleTimeString();
-        }).slice(-30); // Last 30 readings
+            return new Date(reading.timestamp).toLocaleTimeString();
+        }).slice(-30);
         
         const noiseData = historicalData.map(reading => reading.noise).slice(-30);
         const lightData = historicalData.map(reading => reading.light / 100).slice(-30);
         const motionData = historicalData.map(reading => reading.motion).slice(-30);
         
-        // Update chart data
         this.sensorChart.data.labels = labels;
         this.sensorChart.data.datasets[0].data = noiseData;
         this.sensorChart.data.datasets[1].data = lightData;
@@ -570,13 +776,8 @@ class SensorDashboard {
         }
         
         if (systemStatusEl && statusIndicatorEl) {
-            if (this.isOnline) {
-                systemStatusEl.textContent = 'System Online';
-                statusIndicatorEl.className = 'fas fa-circle text-success me-2';
-            } else {
-                systemStatusEl.textContent = 'Connection Lost';
-                statusIndicatorEl.className = 'fas fa-circle text-danger me-2';
-            }
+            systemStatusEl.textContent = this.isOnline ? 'System Online' : 'Connection Lost';
+            statusIndicatorEl.className = `fas fa-circle ${this.isOnline ? 'text-success' : 'text-danger'} me-2`;
         }
     }
 
@@ -584,88 +785,51 @@ class SensorDashboard {
         const alertsEl = document.getElementById('alertsCount');
         if (alertsEl) {
             alertsEl.textContent = this.alerts.length;
-            alertsEl.className = this.alerts.length > 0 ? 'badge bg-danger' : 'badge bg-secondary';
+            alertsEl.className = `badge ${this.alerts.length > 0 ? 'bg-danger' : 'bg-secondary'}`;
         }
     }
 
     async startDataPolling() {
-        // Clear any existing polling
         if (this.pollingInterval) {
-            clearTimeout(this.pollingInterval);
+            clearInterval(this.pollingInterval);
         }
         
         const poll = async () => {
             const currentData = await this.fetchSensorData();
             
             if (currentData) {
-                this.updateChildView(currentData);
-                this.updateCaregiverView(currentData);
+                if (this.currentView === 'child') {
+                    this.updateChildView(currentData);
+                } else {
+                    this.updateCaregiverView(currentData);
+                }
                 
-                // Update chart with historical data
-                const historicalData = await this.fetchHistoricalData();
-                this.updateChart(historicalData);
+                // Only fetch historical data for caregiver view
+                if (this.currentView === 'caregiver') {
+                    const historicalData = await this.fetchHistoricalData();
+                    this.updateChart(historicalData);
+                }
             }
             
             this.updateSystemInfo();
             this.updateAlertsCount();
-            
-            // Update status indicator
-            this.updateStatusIndicator();
-            
-            // Continue polling
-            this.pollingInterval = setTimeout(poll, 2000); // Poll every 2 seconds
         };
         
-        poll();
-    }
-
-    updateStatusIndicator() {
-        const statusIcon = document.querySelector('#statusToast .fas');
-        const statusMessage = document.getElementById('statusMessage');
+        // Initial poll
+        await poll();
         
-        if (statusIcon && statusMessage) {
-            if (this.isOnline) {
-                statusIcon.className = 'fas fa-circle text-success me-2';
-                statusMessage.textContent = 'Sensors Active';
-            } else {
-                statusIcon.className = 'fas fa-circle text-danger me-2';
-                statusMessage.textContent = 'Connection Lost';
-            }
-        }
+        // Set up interval polling
+        this.pollingInterval = setInterval(poll, 2000);
     }
 
     showToast(title, message, type = 'info') {
-        // Create and show Bootstrap toast
-        const toastHtml = `
-            <div class="toast align-items-center text-bg-${type} border-0" role="alert" data-bs-delay="5000">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <strong>${title}</strong><br>${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>
-        `;
-        
-        // Add to toast container or create one
-        let container = document.getElementById('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-            document.body.appendChild(container);
+        // Use the global showToast function from base.html
+        if (typeof window.showToast === 'function') {
+            window.showToast(title, message, type);
+        } else {
+            // Fallback to console log
+            console.log(`${title}: ${message}`);
         }
-        
-        container.insertAdjacentHTML('beforeend', toastHtml);
-        
-        const toastElement = container.lastElementChild;
-        const toast = new bootstrap.Toast(toastElement);
-        toast.show();
-        
-        // Remove from DOM after hiding
-        toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.remove();
-        });
     }
 
     async exportData() {
@@ -683,15 +847,15 @@ class SensorDashboard {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
             
-            this.showToast('Export Complete', 'Sensor data has been downloaded', 'success');
+            this.showToast('Export Complete', 'Sensor data downloaded', 'success');
         } catch (error) {
             console.error('Export failed:', error);
-            this.showToast('Export Failed', 'Unable to export data', 'danger');
+            this.showToast('Export Failed', 'Unable to download data', 'error');
         }
     }
 
     manualRefresh() {
-        this.showToast('Refreshing', 'Manually refreshing sensor data', 'info');
+        this.showToast('Refreshing', 'Updating sensor data', 'info');
         this.startDataPolling();
     }
 
@@ -699,35 +863,37 @@ class SensorDashboard {
         this.alerts = [];
         this.renderAlerts();
         this.updateAlertsCount();
-        this.showToast('Alerts Cleared', 'All alerts have been cleared', 'info');
+        this.showToast('Alerts Cleared', 'All alerts removed', 'info');
     }
 
-    // Clean up when needed
     destroy() {
         if (this.pollingInterval) {
-            clearTimeout(this.pollingInterval);
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
         }
         if (this.sensorChart) {
             this.sensorChart.destroy();
+            this.sensorChart = null;
         }
+        this.isInitialized = false;
     }
 }
 
-// Initialize dashboard when DOM is loaded
+// Initialize dashboard
 function initializeDashboard() {
-    // Wait for Bootstrap to be loaded
-    if (typeof bootstrap === 'undefined') {
-        console.error('Bootstrap is not loaded');
-        return;
+    // Clean up any existing chart instances before creating a new one
+    if (window.sensorDashboard) {
+        window.sensorDashboard.destroy();
     }
     
     window.sensorDashboard = new SensorDashboard();
 }
 
-// Export for use in templates
+// Export for global access
 window.initializeDashboard = initializeDashboard;
+window.SensorDashboard = SensorDashboard;
 
-// Initialize when DOM is fully loaded
+// Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeDashboard);
 } else {

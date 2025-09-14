@@ -2,6 +2,59 @@
 
 {% block title %}Dashboard - Safe Space Monitor{% endblock %}
 
+{% block extra_head %}
+<style>
+.strategy-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #6c757d;
+}
+.strategy-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.strategy-card.auditory { border-left-color: #0d6efd; }
+.strategy-card.visual { border-left-color: #ffc107; }
+.strategy-card.motion { border-left-color: #198754; }
+.strategy-card.regulatory { border-left-color: #6f42c1; }
+
+.child-view-card {
+    transition: all 0.3s ease;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+.status-good { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); }
+.status-warning { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
+.status-danger { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
+
+.sensor-card {
+    transition: transform 0.2s ease;
+}
+.sensor-card:hover {
+    transform: scale(1.02);
+}
+
+.progress {
+    height: 8px;
+    border-radius: 4px;
+}
+.progress-bar {
+    transition: width 0.5s ease;
+}
+
+#recommendationsList {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.child-simple-suggestion {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 1rem 0;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     
@@ -9,11 +62,18 @@
     <div id="childView" class="view-container">
         <div class="row justify-content-center">
             <div class="col-12 col-md-8 col-lg-6">
-                <div class="child-status-card text-center p-5 rounded-4 shadow-lg status-good" id="childStatusCard">
+                <div class="child-view-card text-center p-5 rounded-4 shadow-lg status-good" id="childStatusCard">
                     <div class="status-emoji mb-4" id="statusEmoji">😊</div>
-                    <h1 class="status-text mb-4" id="statusText">All Good!</h1>
-                    <div class="status-details" id="statusDetails">
-                        Everything looks perfect
+                    <h1 class="status-text mb-3" id="statusText">All Good!</h1>
+                    
+                    <!-- Simple Suggestion for Child -->
+                    <div class="child-simple-suggestion bg-white text-dark rounded-3 p-3 mb-3" id="childSuggestion">
+                        <i class="fas fa-smile me-2 text-success"></i>
+                        Everything is perfect right now!
+                    </div>
+                    
+                    <div class="status-details text-white-50" id="statusDetails">
+                        Sensors are reading normal levels
                     </div>
                 </div>
             </div>
@@ -21,30 +81,30 @@
         
         <!-- Simple sensor cards for children -->
         <div class="row mt-4 justify-content-center">
-            <div class="col-4 col-md-3">
-                <div class="child-sensor-card text-center p-3 rounded-3 status-good">
-                    <div class="sensor-icon mb-2">🔊</div>
-                    <div class="sensor-label">Sounds</div>
-                    <div class="sensor-value" id="childNoiseValue">0</div>
-                    <div class="sensor-status" id="childNoiseStatus">Good</div>
+            <div class="col-4 col-md-3 mb-3">
+                <div class="sensor-card child-sensor-card text-center p-3 rounded-3 status-good">
+                    <div class="sensor-icon mb-2 fs-2">🔊</div>
+                    <div class="sensor-label fw-bold mb-1">Sounds</div>
+                    <div class="sensor-value fs-5 fw-bold" id="childNoiseValue">0</div>
+                    <div class="sensor-status small text-muted" id="childNoiseStatus">Good</div>
                 </div>
             </div>
             
-            <div class="col-4 col-md-3">
-                <div class="child-sensor-card text-center p-3 rounded-3 status-good">
-                    <div class="sensor-icon mb-2">💡</div>
-                    <div class="sensor-label">Lights</div>
-                    <div class="sensor-value" id="childLightValue">0</div>
-                    <div class="sensor-status" id="childLightStatus">Good</div>
+            <div class="col-4 col-md-3 mb-3">
+                <div class="sensor-card child-sensor-card text-center p-3 rounded-3 status-good">
+                    <div class="sensor-icon mb-2 fs-2">💡</div>
+                    <div class="sensor-label fw-bold mb-1">Lights</div>
+                    <div class="sensor-value fs-5 fw-bold" id="childLightValue">0</div>
+                    <div class="sensor-status small text-muted" id="childLightStatus">Good</div>
                 </div>
             </div>
             
-            <div class="col-4 col-md-3">
-                <div class="child-sensor-card text-center p-3 rounded-3 status-good">
-                    <div class="sensor-icon mb-2">🏃</div>
-                    <div class="sensor-label">Movement</div>
-                    <div class="sensor-value" id="childMotionValue">0</div>
-                    <div class="sensor-status" id="childMotionStatus">Good</div>
+            <div class="col-4 col-md-3 mb-3">
+                <div class="sensor-card child-sensor-card text-center p-3 rounded-3 status-good">
+                    <div class="sensor-icon mb-2 fs-2">🏃</div>
+                    <div class="sensor-label fw-bold mb-1">Movement</div>
+                    <div class="sensor-value fs-5 fw-bold" id="childMotionValue">0</div>
+                    <div class="sensor-status small text-muted" id="childMotionStatus">Good</div>
                 </div>
             </div>
         </div>
@@ -57,11 +117,12 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
                             <i class="fas fa-tachometer-alt me-2"></i>
                             Current Sensor Readings
                         </h5>
+                        <div class="badge bg-primary" id="overloadStatus">Normal</div>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -73,10 +134,11 @@
                                         <span class="fw-bold">Noise Level</span>
                                     </div>
                                     <div class="sensor-value-display mb-2">
-                                        <span id="noiseValue">--</span> <small class="text-muted">dB</small>
+                                        <span id="noiseValue" class="fs-4 fw-bold">--</span> 
+                                        <small class="text-muted">dB</small>
                                     </div>
-                                    <div class="progress mb-2" style="height: 8px;">
-                                        <div class="progress-bar" id="noiseProgress" style="width: 0%"></div>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-primary" id="noiseProgress" style="width: 0%"></div>
                                     </div>
                                     <small class="text-muted">
                                         Warning: 70dB | Danger: 100dB
@@ -92,10 +154,11 @@
                                         <span class="fw-bold">Light Level</span>
                                     </div>
                                     <div class="sensor-value-display mb-2">
-                                        <span id="lightValue">--</span> <small class="text-muted">lux</small>
+                                        <span id="lightValue" class="fs-4 fw-bold">--</span> 
+                                        <small class="text-muted">lux</small>
                                     </div>
-                                    <div class="progress mb-2" style="height: 8px;">
-                                        <div class="progress-bar" id="lightProgress" style="width: 0%"></div>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-warning" id="lightProgress" style="width: 0%"></div>
                                     </div>
                                     <small class="text-muted">
                                         Warning: 3000lux | Danger: 8000lux
@@ -111,10 +174,11 @@
                                         <span class="fw-bold">Motion Level</span>
                                     </div>
                                     <div class="sensor-value-display mb-2">
-                                        <span id="motionValue">--</span> <small class="text-muted">units</small>
+                                        <span id="motionValue" class="fs-4 fw-bold">--</span> 
+                                        <small class="text-muted">units</small>
                                     </div>
-                                    <div class="progress mb-2" style="height: 8px;">
-                                        <div class="progress-bar" id="motionProgress" style="width: 0%"></div>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-success" id="motionProgress" style="width: 0%"></div>
                                     </div>
                                     <small class="text-muted">
                                         Warning: 50 | Danger: 80
@@ -127,6 +191,10 @@
                                 <div class="system-status">
                                     <i class="fas fa-circle text-success me-2" id="statusIndicator"></i>
                                     <span id="systemStatusText">System Online</span>
+                                    <span class="ms-3">
+                                        <i class="fas fa-brain me-1"></i>
+                                        <span id="recommendationStatus">Ready for recommendations</span>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -135,115 +203,157 @@
             </div>
         </div>
 
-        <!-- Charts and Analytics -->
+        <!-- Main Content Area -->
         <div class="row">
-            <!-- Historical Charts -->
-            <div class="col-lg-8 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="fas fa-chart-line me-2"></i>
-                            Historical Trends (Last 30 readings)
-                        </h6>
-                        <div>
-                            <button class="btn btn-sm btn-outline-primary me-2" id="refreshDataBtn">
-                                <i class="fas fa-sync-alt me-1"></i>Refresh
-                            </button>
-                            <button class="btn btn-sm btn-outline-success" id="exportDataBtn">
-                                <i class="fas fa-download me-1"></i>Export CSV
-                            </button>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-secondary me-2" id="readingsCount">0</span>
-                            <span>Readings</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="sensorChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Alert Panel -->
-            <div class="col-lg-4 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Alert History
-                        </h6>
-                        <span class="badge bg-danger" id="alertsCount">0</span>
-                    </div>
-                    <div class="card-body p-0">
-                        <div id="alertList" class="alert-list p-3">
-                            <div class="text-muted text-center py-4">
-                                <i class="fas fa-check-circle fa-2x mb-2"></i>
-                                <p>No alerts detected</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer bg-transparent">
-                        <button class="btn btn-sm btn-outline-secondary w-100" id="clearAlertsBtn">
-                            <i class="fas fa-trash me-1"></i>Clear All Alerts
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- System Information -->
-        <div class="row">
-            <div class="col-md-6 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            System Information
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-4">
-                                <div class="stat-widget">
-                                    <div class="stat-value" id="uptimeValue">00:00:00</div>
-                                    <div class="stat-label">Uptime</div>
+            <!-- Left Column: Charts and Recommendations -->
+            <div class="col-lg-8">
+                <div class="row">
+                    <!-- Historical Charts -->
+                    <div class="col-12 mb-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    Historical Trends (Last 30 readings)
+                                </h6>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-2" id="refreshDataBtn">
+                                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" id="exportDataBtn">
+                                        <i class="fas fa-download me-1"></i>Export
+                                    </button>
                                 </div>
                             </div>
-                            <div class="col-4">
-                                <div class="stat-widget">
-                                    <div class="stat-value" id="readingsCountValue">0</div>
-                                    <div class="stat-label">Readings</div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="sensorChart"></canvas>
                                 </div>
                             </div>
-                            <div class="col-4">
-                                <div class="stat-widget">
-                                    <div class="stat-value" id="alertsCountValue">0</div>
-                                    <div class="stat-label">Alerts</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recommendations Panel -->
+                    <div class="col-12 mb-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-lightbulb me-2"></i>
+                                    Recommended Strategies
+                                </h6>
+                                <span class="badge bg-info" id="recommendationsCount">0</span>
+                            </div>
+                            <div class="card-body">
+                                <div id="recommendationsList">
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-brain fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">No recommendations yet. Sensor data analysis in progress.</p>
+                                        <small class="text-muted">Suggestions will appear here when overload is detected</small>
+                                    </div>
                                 </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Strategies are personalized based on sensor data and user profile
+                                </small>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-6 mb-4">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent">
-                        <h6 class="mb-0">
-                            <i class="fas fa-robot me-2"></i>
-                            AI Prediction
-                        </h6>
-                    </div>
-                    <div class="card-body text-center">
-                        <div id="predictionWidget" class="prediction-widget low-risk">
-                            <i class="fas fa-brain fa-3x mb-3"></i>
-                            <div class="prediction-probability mb-2">
-                                <span id="predictionValue">0</span>%
+            <!-- Right Column: Alerts and System Info -->
+            <div class="col-lg-4">
+                <div class="row">
+                    <!-- Alert Panel -->
+                    <div class="col-12 mb-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Alert History
+                                </h6>
+                                <span class="badge bg-danger" id="alertsCount">0</span>
                             </div>
-                            <div class="prediction-status text-success" id="predictionStatus">
-                                Normal Conditions
+                            <div class="card-body p-0">
+                                <div id="alertList" class="alert-list p-3">
+                                    <div class="text-muted text-center py-4">
+                                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                        <p>No alerts detected</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <button class="btn btn-sm btn-outline-secondary w-100" id="clearAlertsBtn">
+                                    <i class="fas fa-trash me-1"></i>Clear All Alerts
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Information -->
+                    <div class="col-12 mb-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    System Information
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-6 mb-3">
+                                        <div class="stat-widget">
+                                            <div class="stat-value text-primary" id="uptimeValue">00:00:00</div>
+                                            <div class="stat-label small">Uptime</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <div class="stat-widget">
+                                            <div class="stat-value text-info" id="readingsCountValue">0</div>
+                                            <div class="stat-label small">Readings</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="stat-widget">
+                                            <div class="stat-value text-success" id="alertsCountValue">0</div>
+                                            <div class="stat-label small">Alerts</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="stat-widget">
+                                            <div class="stat-value text-warning" id="recommendationsCountValue">0</div>
+                                            <div class="stat-label small">Suggestions</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- AI Prediction -->
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-robot me-2"></i>
+                                    AI Prediction
+                                </h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <div id="predictionWidget" class="prediction-widget low-risk">
+                                    <i class="fas fa-brain fa-3x mb-3 text-success"></i>
+                                    <div class="prediction-probability mb-2 fs-2 fw-bold text-success" id="predictionValue">
+                                        0
+                                    </div>
+                                    <div class="prediction-status text-success fw-bold" id="predictionStatus">
+                                        Normal Conditions
+                                    </div>
+                                    <div class="mt-2 small text-muted" id="predictionConfidence">
+                                        Confidence: High
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -259,6 +369,140 @@
 // Initialize dashboard when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
+    
+    // Add event listeners for view toggle buttons
+    const childViewBtn = document.getElementById('childViewBtn');
+    const caregiverViewBtn = document.getElementById('caregiverViewBtn');
+    const childView = document.getElementById('childView');
+    const caregiverView = document.getElementById('caregiverView');
+    
+    if (childViewBtn && caregiverViewBtn) {
+        childViewBtn.addEventListener('click', function() {
+            childView.classList.remove('d-none');
+            caregiverView.classList.add('d-none');
+            childViewBtn.classList.add('active');
+            caregiverViewBtn.classList.remove('active');
+            showToast('Switched to Child View', 'info', 'View Changed');
+        });
+        
+        caregiverViewBtn.addEventListener('click', function() {
+            childView.classList.add('d-none');
+            caregiverView.classList.remove('d-none');
+            childViewBtn.classList.remove('active');
+            caregiverViewBtn.classList.add('active');
+            showToast('Switched to Caregiver View', 'info', 'View Changed');
+        });
+        
+        // Set caregiver view as default
+        caregiverViewBtn.click();
+    }
+    
+    // Initialize recommendation system
+    initializeRecommendationSystem();
 });
+
+function initializeRecommendationSystem() {
+    console.log('Recommendation system initialized');
+    // This will be called when sensor data updates
+}
+
+// Function to update child view with simple suggestions
+function updateChildSuggestion(overloadType, strategy) {
+    const suggestionElement = document.getElementById('childSuggestion');
+    const statusElement = document.getElementById('childStatusCard');
+    const emojiElement = document.getElementById('statusEmoji');
+    const textElement = document.getElementById('statusText');
+    const detailsElement = document.getElementById('statusDetails');
+    
+    if (overloadType && strategy) {
+        // Overload detected - show suggestion
+        suggestionElement.innerHTML = `
+            <i class="fas ${getStrategyIcon(strategy)} me-2 text-warning"></i>
+            ${strategy.name}
+        `;
+        
+        statusElement.className = 'child-view-card text-center p-5 rounded-4 shadow-lg status-warning';
+        emojiElement.textContent = '😟';
+        textElement.textContent = 'Time to relax!';
+        detailsElement.textContent = `The ${overloadType} level is high`;
+    } else {
+        // Normal state
+        suggestionElement.innerHTML = `
+            <i class="fas fa-smile me-2 text-success"></i>
+            Everything is perfect right now!
+        `;
+        
+        statusElement.className = 'child-view-card text-center p-5 rounded-4 shadow-lg status-good';
+        emojiElement.textContent = '😊';
+        textElement.textContent = 'All Good!';
+        detailsElement.textContent = 'Sensors are reading normal levels';
+    }
+}
+
+function getStrategyIcon(strategy) {
+    const iconMap = {
+        'noise_cancelling_headphones': 'fa-headphones',
+        'white_noise': 'fa-wave-square',
+        'calming_music': 'fa-music',
+        'dim_lights': 'fa-lightbulb',
+        'blue_light_filter': 'fa-glasses',
+        'deep_pressure': 'fa-weight-hanging',
+        'deep_breathing': 'fa-wind',
+        'counting_exercise': 'fa-calculator'
+    };
+    return iconMap[strategy.id] || 'fa-lightbulb';
+}
+
+// Overload detection function (to be called from your sensor update function)
+function checkForOverloadAndRecommend(sensorData) {
+    const overloadType = getOverloadType(sensorData);
+    
+    if (overloadType) {
+        // Get recommendations
+        getRecommendations(overloadType).then(recommendations => {
+            if (recommendations.length > 0) {
+                // Update caregiver view
+                displayRecommendations(recommendations, overloadType);
+                
+                // Update child view with simple suggestion
+                updateChildSuggestion(overloadType, recommendations[0]);
+                
+                // Show notification
+                showToast(
+                    `${overloadType} overload detected! Showing recommendations.`,
+                    'warning',
+                    'Sensory Alert'
+                );
+                
+                // Update overload status badge
+                document.getElementById('overloadStatus').textContent = `${overloadType} overload`;
+                document.getElementById('overloadStatus').className = 'badge bg-warning';
+            }
+        });
+    } else {
+        // Clear recommendations if no overload
+        document.getElementById('recommendationsList').innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                <p class="text-success">No overload detected</p>
+                <small class="text-muted">Sensor levels are within normal range</small>
+            </div>
+        `;
+        document.getElementById('recommendationsCount').textContent = '0';
+        
+        // Reset child view
+        updateChildSuggestion(null, null);
+        
+        // Reset overload status
+        document.getElementById('overloadStatus').textContent = 'Normal';
+        document.getElementById('overloadStatus').className = 'badge bg-success';
+    }
+}
+
+// Add this to your existing sensor data update function
+// function handleNewSensorData(sensorData) {
+//     // Your existing sensor update code...
+//     checkForOverloadAndRecommend(sensorData);
+// }
 </script>
 {% endblock %}

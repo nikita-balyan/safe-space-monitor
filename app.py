@@ -6,8 +6,9 @@ Flask application factory and configuration
 import os
 import logging
 import joblib
+from datetime import datetime
 from pathlib import Path
-from flask import Flask
+from flask import Flask, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix
 import sys
 from logging.handlers import RotatingFileHandler
@@ -137,6 +138,20 @@ def load_ml_model():
         logger.error(f"Error loading models: {e}")
         model = None
 
+def load_recommendation_engine():
+    """Load the recommendation engine"""
+    try:
+        from recommendation_engine import recommendation_engine
+        app.config['RECOMMENDATION_ENGINE'] = recommendation_engine
+        logger.info("✓ Recommendation engine loaded successfully")
+        return recommendation_engine
+    except ImportError as e:
+        logger.error(f"Failed to load recommendation engine: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Error initializing recommendation engine: {e}")
+        return None
+
 def start_background_simulation():
     """Start the sensor simulation in a background thread"""
     try:
@@ -153,93 +168,137 @@ def start_background_simulation():
     except Exception as e:
         logger.error(f"Failed to start sensor simulation: {e}")
 
-def register_fallback_routes():
-    """Register basic routes if routes.py is missing"""
-    from flask import jsonify
-    from datetime import datetime
-    import random
+# Load models and engines on startup
+load_ml_model()
+recommendation_engine = load_recommendation_engine()
+
+# Recommendation Engine Routes
+@app.route('/api/recommendations', methods=['GET', 'POST'])
+def get_recommendations():
+    """
+    Get recommendations based on sensor data or overload type
+    """
+    from flask import request
     
-    @app.route('/')
-    def home():
-        return jsonify({
-            "message": "Sensor Monitoring API (Fallback Mode)",
-            "status": "operational",
-            "model_loaded": model is not None,
-            "endpoints": {
-                "health": "/health",
-                "current": "/api/current",
-                "predict": "/api/predict (POST)"
-            }
-        })
-    
-    @app.route('/health')
-    def health():
-        return jsonify({
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "model_status": "loaded" if model else "not_loaded"
-        })
-    
-    @app.route('/api/current')
-    def current_sensor_data():
-        data = {
-            "noise": random.randint(40, 120),
-            "light": random.randint(1000, 10000),
-            "motion": random.randint(10, 100),
-            "timestamp": datetime.now().isoformat()
-        }
-        return jsonify(data)
-    
-    @app.route('/api/predict', methods=['POST'])
-    def predict():
-        from flask import request
-        import numpy as np
-        
-        try:
+    try:
+        if request.method == 'POST':
             data = request.get_json()
-            if not data:
-                return jsonify({"error": "No data provided"}), 400
-            
-            if model:
-                # Simple model prediction
-                input_data = np.array([[
-                    float(data.get('noise', 0)),
-                    float(data.get('light', 0)),
-                    float(data.get('motion', 0))
-                ]])
-                probability = model.predict_proba(input_data)[0, 1]
-                prediction = 1 if probability > threshold else 0
-                
-                result = {
-                    "probability": float(probability),
-                    "prediction": int(prediction),
-                    "confidence": "medium",
-                    "threshold": float(threshold),
-                    "model_type": "simple"
+            overload_type = data.get('overload_type', '')
+            user_id = data.get('user_id', 'default')
+        else:
+            # GET request - get overload type from query params
+            overload_type = request.args.get('type', '')
+            user_id = request.args.get('user_id', 'default')
+        
+        if not overload_type:
+            return jsonify({"error": "No overload type provided"}), 400
+        
+        # Get recommendations
+        if recommendation_engine:
+            recommendations = recommendation_engine.get_recommendations(
+                overload_type, user_id, count=3
+            )
+        else:
+            # Fallback demo recommendations
+            recommendations = [
+                {
+                    "id": "demo_strategy",
+                    "name": "Take a calming break",
+                    "description": "Find a quiet space and take deep breaths",
+                    "emoji": "🧘",
+                    "feedback_score": 0.75
                 }
+            ]
+        
+        return jsonify({
+            "overload_type": overload_type,
+            "recommendations": recommendations,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/feedback', methods=['POST'])
+def record_feedback():
+    """
+    Record feedback about a strategy
+    """
+    from flask import request
+    
+    try:
+        data = request.get_json()
+        strategy_id = data.get('strategy_id')
+        was_helpful = data.get('helpful', False)
+        user_id = data.get('user_id', 'default')
+        
+        if not strategy_id:
+            return jsonify({"error": "No strategy ID provided"}), 400
+        
+        if recommendation_engine:
+            success_rate = recommendation_engine.record_feedback(strategy_id, was_helpful, user_id)
+        else:
+            success_rate = 0.5  # Demo value
+        
+        return jsonify({
+            "status": "success",
+            "message": "Feedback recorded",
+            "strategy_id": strategy_id,
+            "success_rate": success_rate,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/profile', methods=['GET', 'POST', 'PUT'])
+def manage_profile():
+    """
+    Create or update user profile
+    """
+    from flask import request
+    
+    try:
+        if request.method == 'GET':
+            user_id = request.args.get('user_id', 'default')
+            if recommendation_engine:
+                profile = recommendation_engine.user_profiles.get(user_id, {})
             else:
-                # Demo mode
-                result = {
-                    "prediction": random.choice([0, 1]),
-                    "confidence": random.choice(["low", "medium", "high"]),
-                    "threshold": 0.5,
-                    "demo_mode": True,
-                    "model_type": "demo"
-                }
+                profile = {}
+            return jsonify({"profile": profile})
+        
+        else:  # POST or PUT
+            data = request.get_json()
+            user_id = data.get('user_id', 'default')
+            age = data.get('age')
+            preferences = data.get('preferences', {})
+            
+            if not age:
+                return jsonify({"error": "Age is required"}), 400
+            
+            if recommendation_engine:
+                profile = recommendation_engine.create_user_profile(user_id, age, preferences)
+            else:
+                profile = {"age": age, "preferences": preferences}
             
             return jsonify({
-                "prediction": result,
+                "status": "success",
+                "message": "Profile updated",
+                "user_id": user_id,
+                "profile": profile,
                 "timestamp": datetime.now().isoformat()
             })
             
-        except Exception as e:
-            logger.error(f"Prediction error: {e}")
-            return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-# Load model on startup
-load_ml_model()
+@app.route('/profile')
+def profile_page():
+    """Serve the profile setup page"""
+    from flask import render_template
+    return render_template('profile.html')
 
-# Register routes
+# Register main routes
 try:
     # Add current directory to Python path for imports
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -248,14 +307,36 @@ try:
         
     from routes import register_routes
     register_routes(app, model, threshold, model_metadata, THRESHOLDS)
-    logger.info("Routes registered successfully")
+    logger.info("Main routes registered successfully")
 except ImportError as e:
-    logger.error(f"Failed to register routes: {e}")
-    logger.info("Registering fallback routes")
-    register_fallback_routes()
+    logger.error(f"Failed to register main routes: {e}")
+    # Fallback basic routes
+    @app.route('/')
+    def home():
+        return jsonify({
+            "message": "Sensor Monitoring API",
+            "status": "operational",
+            "model_loaded": model is not None,
+            "recommendation_engine_loaded": recommendation_engine is not None,
+            "endpoints": {
+                "health": "/health",
+                "current": "/api/current",
+                "predict": "/api/predict (POST)",
+                "recommendations": "/api/recommendations",
+                "profile": "/api/profile"
+            }
+        })
+    
+    @app.route('/health')
+    def health():
+        return jsonify({
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "model_status": "loaded" if model else "not_loaded",
+            "recommendation_engine_status": "loaded" if recommendation_engine else "not_loaded"
+        })
 except Exception as e:
-    logger.error(f"Error registering routes: {e}")
-    register_fallback_routes()
+    logger.error(f"Error registering main routes: {e}")
 
 # Start sensor simulation if available
 start_background_simulation()

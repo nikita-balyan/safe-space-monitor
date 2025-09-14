@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile - Safe Space Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>
+                        Child Profile Setup
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="profileForm">
+                        <div class="mb-3">
+                            <label for="childName" class="form-label">Child's Name (Optional)</label>
+                            <input type="text" class="form-control" id="childName" placeholder="Enter child's name">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="childAge" class="form-label">Child's Age *</label>
+                            <input type="number" class="form-control" id="childAge" min="4" max="16" required>
+                            <div class="form-text">Ages 4-16 supported</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Preferred Strategy Types</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="prefNoise" checked>
+                                <label class="form-check-label" for="prefNoise">
+                                    Sound-based strategies (music, white noise)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="prefVisual" checked>
+                                <label class="form-check-label" for="prefVisual">
+                                    Visual strategies (dim lights, reduce screens)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="prefMovement" checked>
+                                <label class="form-check-label" for="prefMovement">
+                                    Movement strategies (stretching, breaks)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="prefBreathing" checked>
+                                <label class="form-check-label" for="prefBreathing">
+                                    Breathing/calming exercises
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Equipment Preferences</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="prefEquipment" checked>
+                                <label class="form-check-label" for="prefEquipment">
+                                    Willing to use equipment (headphones, fidget tools, etc.)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Specific Sensitivities</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sensitivityLoudNoises">
+                                <label class="form-check-label" for="sensitivityLoudNoises">
+                                    Sensitive to loud noises
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sensitivityBrightLights">
+                                <label class="form-check-label" for="sensitivityBrightLights">
+                                    Sensitive to bright lights
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sensitivityCrowds">
+                                <label class="form-check-label" for="sensitivityCrowds">
+                                    Sensitive to crowds or busy environments
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save me-2"></i>Save Profile
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('profileForm');
+    
+    // Try to load existing profile
+    loadExistingProfile();
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const profileData = {
+            age: parseInt(document.getElementById('childAge').value),
+            preferences: {
+                noise_strategies: document.getElementById('prefNoise').checked,
+                visual_strategies: document.getElementById('prefVisual').checked,
+                movement_strategies: document.getElementById('prefMovement').checked,
+                breathing_strategies: document.getElementById('prefBreathing').checked,
+                equipment_required: document.getElementById('prefEquipment').checked,
+                sensitive_loud_noises: document.getElementById('sensitivityLoudNoises').checked,
+                sensitive_bright_lights: document.getElementById('sensitivityBrightLights').checked,
+                sensitive_crowds: document.getElementById('sensitivityCrowds').checked
+            }
+        };
+        
+        try {
+            const response = await fetch('/api/profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(profileData)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                alert('Profile saved successfully!');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            } else {
+                alert('Error saving profile: ' + result.error);
+            }
+        } catch (error) {
+            alert('Network error: ' + error.message);
+        }
+    });
+    
+    async function loadExistingProfile() {
+        try {
+            const response = await fetch('/api/profile');
+            const result = await response.json();
+            
+            if (response.ok && result.profile && Object.keys(result.profile).length > 0) {
+                // Fill form with existing data
+                if (result.profile.age) {
+                    document.getElementById('childAge').value = result.profile.age;
+                }
+                
+                if (result.profile.preferences) {
+                    const prefs = result.profile.preferences;
+                    document.getElementById('prefNoise').checked = prefs.noise_strategies !== false;
+                    document.getElementById('prefVisual').checked = prefs.visual_strategies !== false;
+                    document.getElementById('prefMovement').checked = prefs.movement_strategies !== false;
+                    document.getElementById('prefBreathing').checked = prefs.breathing_strategies !== false;
+                    document.getElementById('prefEquipment').checked = prefs.equipment_required !== false;
+                    document.getElementById('sensitivityLoudNoises').checked = prefs.sensitive_loud_noises || false;
+                    document.getElementById('sensitivityBrightLights').checked = prefs.sensitive_bright_lights || false;
+                    document.getElementById('sensitivityCrowds').checked = prefs.sensitive_crowds || false;
+                }
+            }
+        } catch (error) {
+            console.log('No existing profile found or error loading:', error);
+        }
+    }
+});
+</script>
+{% endblock %}
