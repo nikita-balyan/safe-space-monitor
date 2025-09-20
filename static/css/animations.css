@@ -1,0 +1,271 @@
+/* static/css/animations.css */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Status animations */
+.status-good {
+    animation: fadeIn 0.8s ease-out, pulse 2s infinite;
+}
+
+.status-warning {
+    animation: fadeIn 0.8s ease-out, bounce 1s infinite;
+}
+
+.status-danger {
+    animation: fadeIn 0.8s ease-out, pulse 0.5s infinite;
+}
+
+/* Child view animations */
+.child-sensor-card {
+    transition: all 0.4s ease;
+}
+
+.child-sensor-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.emoji-transition {
+    transition: transform 0.3s ease;
+}
+
+.emoji-transition:hover {
+    transform: scale(1.2);
+}
+
+/* Utility animation classes */
+.fade-in {
+    animation: fadeIn 0.6s ease-out;
+}
+
+.slide-in {
+    animation: slideIn 0.5s ease-out;
+}
+
+/* Gauge styles and animations */
+.gauge-container {
+    position: relative;
+    margin: 0 auto;
+    transition: all 0.5s ease;
+}
+
+.gauge-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: all 0.5s ease;
+}
+
+.prediction-gauge {
+    margin: 0 auto;
+    max-width: 140px;
+}
+
+/* Strategy card animations */
+.strategy-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #6c757d;
+}
+
+.strategy-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.strategy-card.auditory { border-left-color: #0d6efd; }
+.strategy-card.visual { border-left-color: #ffc107; }
+.strategy-card.motion { border-left-color: #198754; }
+.strategy-card.regulatory { border-left-color: #6f42c1; }
+
+/* Progress bar animations */
+.progress-bar {
+    transition: width 0.5s ease, background-color 0.3s ease;
+}
+
+/* Alert animations */
+.alert-item {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Feedback history styles */
+.feedback-history {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.rating-stars {
+    color: #ffc107;
+    margin-top: 4px;
+}
+
+.rating-stars i {
+    margin-right: 2px;
+}
+
+/* Sensor card animations */
+.sensor-card {
+    transition: transform 0.2s ease;
+}
+
+.sensor-card:hover {
+    transform: scale(1.02);
+}
+
+/* Child view card animations */
+.child-view-card {
+    transition: all 0.3s ease;
+    border: none;
+}
+
+/* Button animations */
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.feedback-btn {
+    transition: all 0.2s ease;
+}
+
+.feedback-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Chart animations */
+.chart-container {
+    transition: opacity 0.3s ease;
+}
+
+/* System status animations */
+.system-status {
+    transition: color 0.3s ease;
+}
+
+/* Prediction widget animations */
+.prediction-widget {
+    transition: all 0.3s ease;
+}
+
+.prediction-widget.low-risk {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.prediction-widget.medium-risk {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+}
+
+.prediction-widget.high-risk {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+}
+
+/* Status card backgrounds */
+.status-good { 
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    color: white;
+}
+
+.status-warning { 
+    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    color: white;
+}
+
+.status-danger { 
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    color: white;
+}
+
+/* Smooth transitions for all interactive elements */
+.sensor-widget, .stat-widget, .card {
+    transition: all 0.3s ease;
+}
+
+/* Hover effects for better UX */
+.sensor-widget:hover, .stat-widget:hover {
+    transform: translateY(-2px);
+}
+
+/* Loading animations */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Pulse animation for important elements */
+.pulse-important {
+    animation: pulse 2s infinite;
+}
+
+/* Bounce animation for alerts */
+.bounce-alert {
+    animation: bounce 1s infinite;
+}
+
+/* Fade out animation */
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(20px); }
+}
+
+.fade-out {
+    animation: fadeOut 0.6s ease-out;
+}
+
+/* Success animation */
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.success-animation {
+    animation: successPulse 0.6s ease-in-out;
+}
+
+/* Warning animation */
+@keyframes warningShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.warning-animation {
+    animation: warningShake 0.5s ease-in-out;
+}
