@@ -6,6 +6,7 @@ Prediction service for real-time overload detection
 import joblib
 import numpy as np
 from pathlib import Path
+import json
 
 class PredictionService:
     """Handles model loading and predictions"""
@@ -28,7 +29,9 @@ class PredictionService:
             model_paths = [
                 Path("models/enhanced_overload_model.joblib"),
                 Path("../models/enhanced_overload_model.joblib"),
-                Path("./enhanced_overload_model.joblib")
+                Path("./enhanced_overload_model.joblib"),
+                Path("enhanced_model.joblib"),
+                Path("basic_model.joblib")
             ]
             
             model_path = None
@@ -44,30 +47,37 @@ class PredictionService:
                 metadata_paths = [
                     Path("models/enhanced_model_metadata.json"),
                     Path("../models/enhanced_model_metadata.json"),
-                    Path(f"{model_path}.metadata.json")
+                    Path(f"{model_path}.metadata.json"),
+                    Path("enhanced_model_metadata.json"),
+                    Path("basic_model_metadata.json")
                 ]
                 
+                metadata_loaded = False
                 for meta_path in metadata_paths:
                     if meta_path.exists():
-                        import json
                         with open(meta_path, 'r') as f:
                             self.metadata = json.load(f)
+                        metadata_loaded = True
                         break
                 
-                self.feature_names = self.metadata.get('feature_names', [])
-                self.threshold = self.metadata.get('threshold', 0.5)
-                self.is_loaded = True
-                
-                print("✓ Enhanced model loaded successfully")
-                print(f"✓ Using {len(self.feature_names)} features")
-                if 'f1_score' in self.metadata:
-                    print(f"✓ Model performance: F1={self.metadata['f1_score']:.3f}")
+                if metadata_loaded:
+                    self.feature_names = self.metadata.get('feature_names', [])
+                    self.threshold = self.metadata.get('threshold', 0.5)
+                    self.is_loaded = True
+                    
+                    print("✓ Enhanced model loaded successfully")
+                    print(f"✓ Using {len(self.feature_names)} features")
+                    if 'f1_score' in self.metadata:
+                        print(f"✓ Model performance: F1={self.metadata['f1_score']:.3f}")
+                else:
+                    print("⚠ Model metadata not found")
+                    self.is_loaded = False
             else:
-                print("⚠ Enhanced model file not found")
+                print("⚠ No model files found")
                 self.is_loaded = False
                 
         except Exception as e:
-            print(f"❌ Error loading enhanced model: {e}")
+            print(f"❌ Error loading model: {e}")
             self.is_loaded = False
     
     def add_reading(self, timestamp, noise, light, motion):
@@ -79,12 +89,13 @@ class PredictionService:
         # First add the new reading to our feature engineer
         self.add_reading(timestamp, noise, light, motion)
         
-        if not self.is_loaded:
+        if not self.is_loaded or self.model is None:
             return {
                 "error": "Model not loaded",
                 "probability": None,
                 "prediction": None,
-                "confidence": "low"
+                "confidence": "low",
+                "samples_collected": len(self.feature_engineer.noise_buffer)
             }
         
         try:
@@ -132,7 +143,8 @@ class PredictionService:
                 "error": f"Prediction failed: {str(e)}",
                 "probability": None,
                 "prediction": None,
-                "confidence": "low"
+                "confidence": "low",
+                "samples_collected": len(self.feature_engineer.noise_buffer)
             }
     
     def get_model_info(self):
@@ -155,3 +167,7 @@ class PredictionService:
         """Clear the feature engineer buffers"""
         self.feature_engineer.clear_buffers()
         print("✓ Feature buffers cleared")
+
+
+# Global instance for easy import
+prediction_service = PredictionService()

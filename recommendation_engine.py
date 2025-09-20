@@ -373,6 +373,39 @@ class RecommendationEngine:
                 if strategy['id'] == strategy_id:
                     return strategy
         return None
+    
+    def get_all_strategies(self):
+        """Get all strategies organized by category"""
+        return self.strategies
+    
+    def get_user_profile(self, user_id):
+        """Get a user profile by ID"""
+        return self.user_profiles.get(user_id, None)
+    
+    def update_user_preferences(self, user_id, preferences):
+        """Update user preferences"""
+        if user_id in self.user_profiles:
+            self.user_profiles[user_id]["preferences"] = preferences
+            self.user_profiles[user_id]["last_updated"] = datetime.now().isoformat()
+            self._save_user_profiles()
+            return True
+        return False
+    
+    def get_strategy_effectiveness(self, strategy_id):
+        """Get effectiveness data for a specific strategy"""
+        if strategy_id in self.feedback_data:
+            return self.feedback_data[strategy_id]
+        return None
+    
+    def reset_feedback(self, strategy_id=None):
+        """Reset feedback data for a strategy or all strategies"""
+        if strategy_id:
+            if strategy_id in self.feedback_data:
+                del self.feedback_data[strategy_id]
+        else:
+            self.feedback_data = {}
+        self._save_feedback()
+        return True
 
 # Global instance
 recommendation_engine = RecommendationEngine()

@@ -3,6 +3,7 @@ class SensorDashboard {
     constructor() {
         this.currentView = 'caregiver';
         this.sensorChart = null;
+        this.gaugeChart = null;
         this.alerts = [];
         this.isOnline = true;
         this.startTime = Date.now();
@@ -28,6 +29,7 @@ class SensorDashboard {
         
         this.setupEventListeners();
         this.setupChart();
+        this.setupGaugeChart();
         this.startDataPolling();
         this.updateSystemInfo();
         
@@ -254,6 +256,50 @@ class SensorDashboard {
         });
     }
 
+    setupGaugeChart() {
+        const ctx = document.getElementById('predictionGauge');
+        if (!ctx) return;
+        
+        // Destroy existing chart if it exists
+        if (this.gaugeChart) {
+            this.gaugeChart.destroy();
+            this.gaugeChart = null;
+        }
+
+        this.gaugeChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: [
+                        '#28a745', // Green
+                        '#e9ecef'  // Gray background
+                    ],
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: 270
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                },
+                animation: {
+                    animateRotate: true,
+                    animateScale: true
+                }
+            }
+        });
+    }
+
     async fetchSensorData() {
         try {
             const response = await fetch('/api/current');
@@ -393,10 +439,20 @@ class SensorDashboard {
         const detailsEl = document.getElementById('statusDetails');
         
         if (statusCard && emojiEl && textEl && detailsEl) {
-            statusCard.className = `child-view-card text-center p-5 rounded-4 shadow-lg status-${status}`;
+            // Add animation classes
+            statusCard.classList.add('fade-in');
+            emojiEl.classList.add('emoji-transition');
+            
+            statusCard.className = `child-view-card text-center p-5 rounded-4 shadow-lg status-${status} fade-in`;
             emojiEl.textContent = emoji;
             textEl.textContent = text;
             detailsEl.textContent = details;
+            
+            // Remove animation classes after animation completes
+            setTimeout(() => {
+                statusCard.classList.remove('fade-in');
+                emojiEl.classList.remove('emoji-transition');
+            }, 1000);
         }
     }
 
@@ -576,7 +632,7 @@ class SensorDashboard {
         }
         
         alertList.innerHTML = this.alerts.map(alert => `
-            <div class="alert-item alert alert-${alert.severity} mb-2">
+            <div class="alert-item alert alert-${alert.severity} mb-2 slide-in">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <i class="fas fa-${alert.severity === 'danger' ? 'exclamation-triangle' : 'exclamation-circle'} me-2"></i>
@@ -595,8 +651,9 @@ class SensorDashboard {
         const valueEl = document.getElementById('predictionValue');
         const statusEl = document.getElementById('predictionStatus');
         const widgetEl = document.getElementById('predictionWidget');
+        const gaugePercentageEl = document.getElementById('gaugePercentage');
         
-        if (predictionResponse && valueEl && statusEl && widgetEl) {
+        if (predictionResponse && valueEl && statusEl && widgetEl && gaugePercentageEl) {
             const predictionData = predictionResponse.prediction;
             let probability = predictionData.probability || 0;
             
@@ -606,6 +663,25 @@ class SensorDashboard {
             
             const probabilityPercent = Math.round(probability * 100);
             valueEl.textContent = probabilityPercent;
+            gaugePercentageEl.textContent = `${probabilityPercent}%`;
+            
+            // Update gauge chart
+            if (this.gaugeChart) {
+                this.gaugeChart.data.datasets[0].data = [probabilityPercent, 100 - probabilityPercent];
+                
+                // Update gauge color based on risk level
+                let gaugeColor;
+                if (predictionData.prediction === 1) {
+                    gaugeColor = '#dc3545'; // Red for high risk
+                } else if (probabilityPercent > 70) {
+                    gaugeColor = '#ffc107'; // Yellow for medium risk
+                } else {
+                    gaugeColor = '#28a745'; // Green for low risk
+                }
+                
+                this.gaugeChart.data.datasets[0].backgroundColor = [gaugeColor, '#e9ecef'];
+                this.gaugeChart.update('none');
+            }
             
             // Update prediction status
             if (predictionData.prediction === 1) {
@@ -654,15 +730,30 @@ class SensorDashboard {
         recommendations.forEach((strategy) => {
             const successRate = Math.round((strategy.feedback_score || 0.5) * 100);
             const emoji = strategy.emoji || '💡';
+            const feedbackCount = strategy.feedback_count || 0;
+            
+            // Determine rating stars based on success rate
+            const stars = this.generateRatingStars(successRate);
             
             html += `
-                <div class="card mb-3 strategy-card ${overloadType}" data-strategy-id="${strategy.id}">
+                <div class="card mb-3 strategy-card ${overloadType} fade-in" data-strategy-id="${strategy.id}">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-start">
                             <span class="fs-4 me-3">${emoji}</span>
                             <div class="flex-grow-1">
                                 <h6 class="card-title mb-1">${strategy.name}</h6>
                                 <p class="card-text small text-muted mb-2">${strategy.description}</p>
+                                
+                                <!-- Feedback history -->
+                                <div class="feedback-history mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-chart-line me-1"></i>
+                                        ${successRate}% success rate (${feedbackCount} responses)
+                                    </small>
+                                    <div class="rating-stars small">
+                                        ${stars}
+                                    </div>
+                                </div>
                                 
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
@@ -673,10 +764,10 @@ class SensorDashboard {
                                     </div>
                                     <div class="btn-group strategy-feedback" role="group">
                                         <button type="button" class="btn btn-sm btn-outline-success feedback-btn" data-helpful="true">
-                                            <i class="fas fa-thumbs-up"></i>
+                                            <i class="fas fa-thumbs-up"></i> Helpful
                                         </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger feedback-btn" data-helpful="false">
-                                            <i class="fas fa-thumbs-down"></i>
+                                            <i class="fas fa-thumbs-down"></i> Not Helpful
                                         </button>
                                     </div>
                                 </div>
@@ -688,6 +779,31 @@ class SensorDashboard {
         });
         
         container.innerHTML = html;
+    }
+
+    generateRatingStars(successRate) {
+        const fullStars = Math.floor(successRate / 20);
+        const halfStar = successRate % 20 >= 10 ? 1 : 0;
+        const emptyStars = 5 - fullStars - halfStar;
+        
+        let stars = '';
+        
+        // Add full stars
+        for (let i = 0; i < fullStars; i++) {
+            stars += '<i class="fas fa-star text-warning"></i>';
+        }
+        
+        // Add half star
+        if (halfStar) {
+            stars += '<i class="fas fa-star-half-alt text-warning"></i>';
+        }
+        
+        // Add empty stars
+        for (let i = 0; i < emptyStars; i++) {
+            stars += '<i class="far fa-star text-warning"></i>';
+        }
+        
+        return stars;
     }
 
     clearRecommendations() {
@@ -736,20 +852,74 @@ class SensorDashboard {
         // Store historical data for later use
         this.historicalData = historicalData;
         
-        const labels = historicalData.map(reading => {
+        // Show only last 10 minutes of data (adjust as needed)
+        const now = Date.now();
+        const tenMinutesAgo = now - (10 * 60 * 1000);
+    
+        const recentData = historicalData.filter(reading => {
+            return new Date(reading.timestamp).getTime() > tenMinutesAgo;
+        }).slice(-30); // Show max 30 points
+    
+        const labels = recentData.map(reading => {
             return new Date(reading.timestamp).toLocaleTimeString();
-        }).slice(-30);
+        });
         
-        const noiseData = historicalData.map(reading => reading.noise).slice(-30);
-        const lightData = historicalData.map(reading => reading.light / 100).slice(-30);
-        const motionData = historicalData.map(reading => reading.motion).slice(-30);
-        
+        const noiseData = recentData.map(reading => reading.noise);
+        const lightData = recentData.map(reading => reading.light / 100);
+        const motionData = recentData.map(reading => reading.motion);
+    
         this.sensorChart.data.labels = labels;
         this.sensorChart.data.datasets[0].data = noiseData;
         this.sensorChart.data.datasets[1].data = lightData;
         this.sensorChart.data.datasets[2].data = motionData;
-        
+    
         this.sensorChart.update('none');
+    
+        // Add visual indicators for thresholds
+        this.addChartThresholds();
+    }
+
+    addChartThresholds() {
+        if (!this.sensorChart) return;
+    
+        // Add threshold lines to the chart
+        const chart = this.sensorChart;
+        const yScale = chart.scales.y;
+    
+        // Remove existing threshold lines if any
+        chart.options.plugins.annotation = chart.options.plugins.annotation || {};
+        chart.options.plugins.annotation.annotations = [];
+    
+        // Add noise threshold lines
+        chart.options.plugins.annotation.annotations.push(
+            {
+                type: 'line',
+                mode: 'horizontal',
+                scaleID: 'y',
+                value: this.thresholds.noise.warning,
+                borderColor: 'orange',
+                borderWidth: 1,
+                borderDash: [5, 5],
+                label: {
+                    enabled: true,
+                    content: 'Noise Warning'
+                }
+            },
+            {
+                type: 'line',
+                mode: 'horizontal',
+                scaleID: 'y',
+                value: this.thresholds.noise.danger,
+                borderColor: 'red',
+                borderWidth: 2,
+                label: {
+                    enabled: true,
+                    content: 'Noise Danger'
+                }
+            }
+        );
+    
+        chart.update('none');
     }
 
     updateSystemInfo() {
@@ -874,6 +1044,10 @@ class SensorDashboard {
         if (this.sensorChart) {
             this.sensorChart.destroy();
             this.sensorChart = null;
+        }
+        if (this.gaugeChart) {
+            this.gaugeChart.destroy();
+            this.gaugeChart = null;
         }
         this.isInitialized = false;
     }
