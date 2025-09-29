@@ -1,25 +1,45 @@
-/* static/css/animations.css */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+/* Neurodiverse-Friendly Animations CSS */
+/* Designed for sensory sensitivity and predictability */
+
+/* Base animation - Gentle and predictable */
+@keyframes gentleFadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(10px) scale(0.98); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+    }
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+/* Very subtle pulse for calm states */
+@keyframes gentlePulse {
+    0%, 100% { 
+        transform: scale(1); 
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1.02); 
+        opacity: 0.95;
+    }
 }
 
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-10px); }
-    60% { transform: translateY(-5px); }
+/* Minimal bounce for important alerts */
+@keyframes gentleBounce {
+    0%, 100% { 
+        transform: translateY(0); 
+    }
+    50% { 
+        transform: translateY(-3px); 
+    }
 }
 
-@keyframes slideIn {
+/* Smooth slide for transitions */
+@keyframes gentleSlideIn {
     from { 
         opacity: 0;
-        transform: translateX(-30px);
+        transform: translateX(-15px);
     }
     to { 
         opacity: 1;
@@ -27,51 +47,77 @@
     }
 }
 
-/* Status animations */
+/* Gentle color transition for status changes */
+@keyframes gentleColorShift {
+    0% { 
+        background-position: 0% 50%; 
+    }
+    50% { 
+        background-position: 100% 50%; 
+    }
+    100% { 
+        background-position: 0% 50%; 
+    }
+}
+
+/* Very subtle breathing effect */
+@keyframes calmBreathing {
+    0%, 100% { 
+        transform: scale(1); 
+    }
+    50% { 
+        transform: scale(1.01); 
+    }
+}
+
+/* Status animations - Minimal and predictable */
 .status-good {
-    animation: fadeIn 0.8s ease-out, pulse 2s infinite;
+    animation: gentleFadeIn 1s ease-out, calmBreathing 4s ease-in-out infinite;
+    animation-delay: 0s, 1s;
 }
 
 .status-warning {
-    animation: fadeIn 0.8s ease-out, bounce 1s infinite;
+    animation: gentleFadeIn 1s ease-out, gentlePulse 3s ease-in-out infinite;
+    animation-delay: 0s, 1s;
 }
 
 .status-danger {
-    animation: fadeIn 0.8s ease-out, pulse 0.5s infinite;
+    animation: gentleFadeIn 1s ease-out, gentlePulse 2s ease-in-out infinite;
+    animation-delay: 0s, 1s;
 }
 
-/* Child view animations */
+/* Child view animations - Predictable and gentle */
 .child-sensor-card {
-    transition: all 0.4s ease;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .child-sensor-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .emoji-transition {
-    transition: transform 0.3s ease;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .emoji-transition:hover {
-    transform: scale(1.2);
+    transform: scale(1.1);
 }
 
 /* Utility animation classes */
 .fade-in {
-    animation: fadeIn 0.6s ease-out;
+    animation: gentleFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .slide-in {
-    animation: slideIn 0.5s ease-out;
+    animation: gentleSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Gauge styles and animations */
+/* Gauge animations - Smooth and continuous */
 .gauge-container {
     position: relative;
     margin: 0 auto;
-    transition: all 0.5s ease;
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .gauge-value {
@@ -81,191 +127,367 @@
     transform: translate(-50%, -50%);
     font-size: 1.5rem;
     font-weight: bold;
-    transition: all 0.5s ease;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .prediction-gauge {
     margin: 0 auto;
     max-width: 140px;
+    transition: all 0.5s ease;
 }
 
-/* Strategy card animations */
+/* Strategy card animations - Clear but not distracting */
 .strategy-card {
-    transition: all 0.3s ease;
-    border-left: 4px solid #6c757d;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 4px solid #e5e7eb;
 }
 
 .strategy-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
 }
 
-.strategy-card.auditory { border-left-color: #0d6efd; }
-.strategy-card.visual { border-left-color: #ffc107; }
-.strategy-card.motion { border-left-color: #198754; }
-.strategy-card.regulatory { border-left-color: #6f42c1; }
+.strategy-card.auditory { border-left-color: #60a5fa; }
+.strategy-card.visual { border-left-color: #fbbf24; }
+.strategy-card.motion { border-left-color: #34d399; }
+.strategy-card.regulatory { border-left-color: #a78bfa; }
 
-/* Progress bar animations */
+/* Progress bar animations - Smooth and continuous */
 .progress-bar {
-    transition: width 0.5s ease, background-color 0.3s ease;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), 
+                background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Alert animations */
+/* Alert animations - Noticeable but not jarring */
 .alert-item {
-    animation: slideIn 0.3s ease-out;
+    animation: gentleSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.alert-item.new-alert {
+    animation: gentleSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+               gentleBounce 2s ease-in-out 2;
+    animation-delay: 0s, 0.4s;
 }
 
 /* Feedback history styles */
 .feedback-history {
-    background: #f8f9fa;
-    border-radius: 6px;
+    background: #f8fafc;
+    border-radius: 8px;
     padding: 8px;
     margin-bottom: 10px;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .rating-stars {
-    color: #ffc107;
+    color: #fbbf24;
     margin-top: 4px;
 }
 
 .rating-stars i {
-    margin-right: 2px;
+    margin-right: 1px;
 }
 
 /* Sensor card animations */
 .sensor-card {
-    transition: transform 0.2s ease;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sensor-card:hover {
-    transform: scale(1.02);
+    transform: scale(1.01);
 }
 
 /* Child view card animations */
 .child-view-card {
-    transition: all 0.3s ease;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     border: none;
 }
 
-/* Button animations */
+/* Button animations - Predictable feedback */
 .btn {
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn:hover {
     transform: translateY(-1px);
 }
 
+.btn:active {
+    transform: translateY(0);
+    transition-duration: 0.1s;
+}
+
 .feedback-btn {
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .feedback-btn:hover {
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
 
 /* Chart animations */
 .chart-container {
-    transition: opacity 0.3s ease;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* System status animations */
 .system-status {
-    transition: color 0.3s ease;
+    transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Prediction widget animations */
 .prediction-widget {
-    transition: all 0.3s ease;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.prediction-widget.low-risk {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-}
-
-.prediction-widget.medium-risk {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-}
-
-.prediction-widget.high-risk {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-}
-
-/* Status card backgrounds */
+/* Status card backgrounds with gentle gradients */
 .status-good { 
-    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-    color: white;
+    background: linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%);
+    animation: gentleColorShift 8s ease infinite;
+    background-size: 200% 200%;
 }
 
 .status-warning { 
-    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
-    color: white;
+    background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+    animation: gentleColorShift 6s ease infinite;
+    background-size: 200% 200%;
 }
 
 .status-danger { 
-    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-    color: white;
+    background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+    animation: gentleColorShift 4s ease infinite;
+    background-size: 200% 200%;
 }
 
 /* Smooth transitions for all interactive elements */
 .sensor-widget, .stat-widget, .card {
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Hover effects for better UX */
 .sensor-widget:hover, .stat-widget:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 /* Loading animations */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+@keyframes gentleSpin {
+    0% { 
+        transform: rotate(0deg); 
+    }
+    100% { 
+        transform: rotate(360deg); 
+    }
 }
 
 .loading-spinner {
-    animation: spin 1s linear infinite;
+    animation: gentleSpin 1.5s linear infinite;
 }
 
-/* Pulse animation for important elements */
-.pulse-important {
-    animation: pulse 2s infinite;
-}
-
-/* Bounce animation for alerts */
-.bounce-alert {
-    animation: bounce 1s infinite;
-}
-
-/* Fade out animation */
-@keyframes fadeOut {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(20px); }
-}
-
-.fade-out {
-    animation: fadeOut 0.6s ease-out;
-}
-
-/* Success animation */
-@keyframes successPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+/* Success animation - Subtle and positive */
+@keyframes gentleSuccess {
+    0% { 
+        transform: scale(1); 
+    }
+    50% { 
+        transform: scale(1.03); 
+    }
+    100% { 
+        transform: scale(1); 
+    }
 }
 
 .success-animation {
-    animation: successPulse 0.6s ease-in-out;
+    animation: gentleSuccess 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Warning animation */
-@keyframes warningShake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+/* Warning animation - Noticeable but calm */
+@keyframes gentleWarning {
+    0%, 100% { 
+        transform: translateX(0); 
+    }
+    25% { 
+        transform: translateX(-2px); 
+    }
+    75% { 
+        transform: translateX(2px); 
+    }
 }
 
 .warning-animation {
-    animation: warningShake 0.5s ease-in-out;
+    animation: gentleWarning 0.6s ease-in-out;
 }
+
+/* Data update indication */
+@keyframes dataHighlight {
+    0% { 
+        background-color: rgba(96, 165, 250, 0.2); 
+    }
+    100% { 
+        background-color: transparent; 
+    }
+}
+
+.data-updated {
+    animation: dataHighlight 1s ease-out;
+}
+
+/* Real-time indicator */
+@keyframes gentleGlow {
+    0%, 100% { 
+        opacity: 1; 
+    }
+    50% { 
+        opacity: 0.7; 
+    }
+}
+
+.real-time-indicator {
+    animation: gentleGlow 3s ease-in-out infinite;
+}
+
+/* Staggered animations for lists */
+.stagger-item {
+    opacity: 0;
+    animation: gentleFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.stagger-item:nth-child(1) { animation-delay: 0.1s; }
+.stagger-item:nth-child(2) { animation-delay: 0.2s; }
+.stagger-item:nth-child(3) { animation-delay: 0.3s; }
+.stagger-item:nth-child(4) { animation-delay: 0.4s; }
+.stagger-item:nth-child(5) { animation-delay: 0.5s; }
+
+/* Focus animations for accessibility */
+@keyframes gentleFocus {
+    0% { 
+        box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); 
+    }
+    70% { 
+        box-shadow: 0 0 0 6px rgba(79, 70, 229, 0); 
+    }
+    100% { 
+        box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); 
+    }
+}
+
+.focus-animation {
+    animation: gentleFocus 1.5s ease-out;
+}
+
+/* Breathing guidance animation */
+@keyframes breathingGuide {
+    0%, 100% { 
+        transform: scale(1); 
+        opacity: 0.7;
+    }
+    25% { 
+        transform: scale(1.1); 
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1); 
+        opacity: 0.7;
+    }
+    75% { 
+        transform: scale(0.9); 
+        opacity: 0.5;
+    }
+}
+
+.breathing-animation {
+    animation: breathingGuide 4s ease-in-out infinite;
+}
+
+/* Sensory break animation */
+@keyframes sensoryBreak {
+    0% { 
+        background-position: 0% 50%; 
+    }
+    50% { 
+        background-position: 100% 50%; 
+    }
+    100% { 
+        background-position: 0% 50%; 
+    }
+}
+
+.sensory-break {
+    background: linear-gradient(-45deg, #e0e7ff, #f3f4f6, #fef3c7, #d1fae5);
+    background-size: 400% 400%;
+    animation: sensoryBreak 10s ease infinite;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .fade-in,
+    .slide-in,
+    .status-good,
+    .status-warning,
+    .status-danger {
+        animation: none !important;
+        transition: none !important;
+    }
+    
+    .child-sensor-card:hover,
+    .sensor-card:hover,
+    .strategy-card:hover,
+    .btn:hover {
+        transform: none !important;
+    }
+}
+
+/* Print styles - remove animations */
+@media print {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .status-good,
+    .status-warning,
+    .status-danger {
+        animation: none;
+        background: white !important;
+        border: 3px solid;
+    }
+    
+    .status-good { border-color: #008000; }
+    .status-warning { border-color: #ffa500; }
+    .status-danger { border-color: #ff0000; }
+}
+
+/* Performance optimizations */
+.will-change {
+    will-change: transform, opacity;
+}
+
+/* Animation performance classes */
+.animate-transform {
+    transform: translateZ(0);
+}
+
+/* Smooth scrolling for the whole page */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Custom easing curves for different emotional states */
+.calm-ease { transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+.alert-ease { transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+.positive-ease { transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+/* Duration classes for predictable timing */
+.duration-slow { transition-duration: 0.5s; animation-duration: 0.5s; }
+.duration-normal { transition-duration: 0.3s; animation-duration: 0.3s; }
+.duration-fast { transition-duration: 0.15s; animation-duration: 0.15s; }

@@ -104,7 +104,17 @@
     transform: scale(1.2);
 }
 
-/* Keyframes for animations */
+/* Real-time data indicators */
+.real-time-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -153,6 +163,312 @@
     transform: translateY(-3px);
     box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
+
+/* Real-time update indicators */
+.real-time-value {
+    transition: all 0.3s ease;
+}
+
+.value-updating {
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+/* Alert styles */
+.alert-item {
+    border-left: 4px solid #dc3545;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    background: #f8d7da;
+    border-radius: 4px;
+}
+
+.alert-item.warning {
+    border-left-color: #ffc107;
+    background: #fff3cd;
+}
+
+.alert-item.info {
+    border-left-color: #0dcaf0;
+    background: #d1ecf1;
+}
+
+/* Chart container */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Enhanced Activities Grid */
+.activities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.activity-card {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.activity-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: #3B82F6;
+}
+
+.activity-emoji {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.activity-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+.activity-description {
+    color: #6b7280;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.activity-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.activity-type {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+/* Activity Type Colors */
+.activity-type.breathing { background: #dbeafe; color: #1e40af; }
+.activity-type.sensory { background: #f3e8ff; color: #7e22ce; }
+.activity-type.physical { background: #fef3c7; color: #d97706; }
+.activity-type.visual { background: #fee2e2; color: #dc2626; }
+.activity-type.mental { background: #f3f4f6; color: #374151; }
+
+/* Activity Instructions */
+.instruction-step {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border-left: 3px solid #3B82F6;
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #3B82F6;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.step-text {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.step-duration {
+    color: #6b7280;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+}
+
+/* Fullscreen Activity Canvas */
+#breathingCanvas {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background: rgba(0,0,0,0.9);
+    cursor: pointer;
+}
+
+/* Activity Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #e9ecef;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* Enhanced Progress Bars */
+.progress-container {
+    background: #f1f5f9;
+    border-radius: 10px;
+    overflow: hidden;
+    height: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .activities-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .activity-card {
+        padding: 1rem;
+    }
+    
+    .activity-emoji {
+        font-size: 2.5rem;
+    }
+}
+
+/* High Contrast Mode */
+.high-contrast .activity-card {
+    border: 2px solid #000;
+    background: #fff;
+}
+
+.high-contrast .strategy-card {
+    border-left-width: 6px;
+}
+
+/* Reduced Motion */
+.reduced-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+}
+
+/* Custom scrollbar for recommendations */
+#recommendationsList::-webkit-scrollbar {
+    width: 6px;
+}
+
+#recommendationsList::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#recommendationsList::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+#recommendationsList::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Sensor value styling */
+.sensor-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.sensor-value.sensor-danger {
+    color: #dc3545;
+    animation: pulse 1s infinite;
+}
+
+.sensor-value.sensor-warning {
+    color: #ffc107;
+}
+
+.sensor-value.sensor-normal {
+    color: #198754;
+}
+
+/* Risk level styling */
+.risk-high { color: #dc3545; }
+.risk-medium { color: #ffc107; }
+.risk-low { color: #198754; }
+
+/* Chart improvements */
+.chart-wrapper {
+    position: relative;
+    margin: 0 auto;
+}
+
+/* System status indicators */
+.system-status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.status-connected { background-color: #198754; }
+.status-disconnected { background-color: #dc3545; }
+.status-connecting { background-color: #ffc107; }
+
+/* Loading states */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
 </style>
 {% endblock %}
 
@@ -186,7 +502,7 @@
                 <div class="sensor-card child-sensor-card text-center p-3 rounded-3 status-good">
                     <div class="sensor-icon mb-2 fs-2">🔊</div>
                     <div class="sensor-label fw-bold mb-1">Sounds</div>
-                    <div class="sensor-value fs-5 fw-bold" id="childNoiseValue">0</div>
+                    <div class="sensor-value fs-5 fw-bold" id="childNoiseValue">--</div>
                     <div class="sensor-status small text-muted" id="childNoiseStatus">Good</div>
                 </div>
             </div>
@@ -195,7 +511,7 @@
                 <div class="sensor-card child-sensor-card text-center p-3 rounded-3 status-good">
                     <div class="sensor-icon mb-2 fs-2">💡</div>
                     <div class="sensor-label fw-bold mb-1">Lights</div>
-                    <div class="sensor-value fs-5 fw-bold" id="childLightValue">0</div>
+                    <div class="sensor-value fs-5 fw-bold" id="childLightValue">--</div>
                     <div class="sensor-status small text-muted" id="childLightStatus">Good</div>
                 </div>
             </div>
@@ -204,7 +520,7 @@
                 <div class="sensor-card child-sensor-card text-center p-3 rounded-3 status-good">
                     <div class="sensor-icon mb-2 fs-2">🏃</div>
                     <div class="sensor-label fw-bold mb-1">Movement</div>
-                    <div class="sensor-value fs-5 fw-bold" id="childMotionValue">0</div>
+                    <div class="sensor-value fs-5 fw-bold" id="childMotionValue">--</div>
                     <div class="sensor-status small text-muted" id="childMotionStatus">Good</div>
                 </div>
             </div>
@@ -221,7 +537,8 @@
                     <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
                             <i class="fas fa-tachometer-alt me-2"></i>
-                            Current Sensor Readings
+                            Real-time Sensor Readings
+                            <span class="real-time-badge badge bg-info ms-2">Live</span>
                         </h5>
                         <div class="badge bg-success" id="overloadStatus">Normal</div>
                     </div>
@@ -232,10 +549,10 @@
                                 <div class="sensor-widget">
                                     <div class="d-flex align-items-center mb-2">
                                         <i class="fas fa-volume-up text-primary me-2"></i>
-                                        <span class="fw-bold" id="noiseLabel">Noise Level</span>
+                                        <span class="fw-bold">Noise Level</span>
                                     </div>
                                     <div class="sensor-value-display mb-2">
-                                        <span id="noiseValue" class="fs-4 fw-bold">--</span> 
+                                        <span id="noiseValue" class="fs-4 fw-bold real-time-value sensor-normal">--</span> 
                                         <small class="text-muted">dB</small>
                                     </div>
                                     <div class="progress mb-2">
@@ -252,10 +569,10 @@
                                 <div class="sensor-widget">
                                     <div class="d-flex align-items-center mb-2">
                                         <i class="fas fa-lightbulb text-warning me-2"></i>
-                                        <span class="fw-bold" id="lightLabel">Light Level</span>
+                                        <span class="fw-bold">Light Level</span>
                                     </div>
                                     <div class="sensor-value-display mb-2">
-                                        <span id="lightValue" class="fs-4 fw-bold">--</span> 
+                                        <span id="lightValue" class="fs-4 fw-bold real-time-value sensor-normal">--</span> 
                                         <small class="text-muted">lux</small>
                                     </div>
                                     <div class="progress mb-2">
@@ -272,10 +589,10 @@
                                 <div class="sensor-widget">
                                     <div class="d-flex align-items-center mb-2">
                                         <i class="fas fa-running text-success me-2"></i>
-                                        <span class="fw-bold" id="motionLabel">Motion Level</span>
+                                        <span class="fw-bold">Motion Level</span>
                                     </div>
                                     <div class="sensor-value-display mb-2">
-                                        <span id="motionValue" class="fs-4 fw-bold">--</span> 
+                                        <span id="motionValue" class="fs-4 fw-bold real-time-value sensor-normal">--</span> 
                                         <small class="text-muted">units</small>
                                     </div>
                                     <div class="progress mb-2">
@@ -291,10 +608,10 @@
                             <div class="col-12 text-center">
                                 <div class="system-status">
                                     <i class="fas fa-circle text-success me-2" id="statusIndicator"></i>
-                                    <span id="systemStatusText">System Online</span>
+                                    <span id="systemStatusText">Real-time Data Streaming Active</span>
                                     <span class="ms-3">
-                                        <i class="fas fa-brain me-1"></i>
-                                        <span id="recommendationStatus">Ready for recommendations</span>
+                                        <i class="fas fa-sync-alt me-1"></i>
+                                        <span>Updates every 1 second</span>
                                     </span>
                                 </div>
                             </div>
@@ -306,16 +623,17 @@
 
         <!-- Main Content Area -->
         <div class="row">
-            <!-- Left Column: Charts and Recommendations -->
+            <!-- Left Column: Charts and Activities -->
             <div class="col-lg-8">
                 <div class="row">
-                    <!-- Historical Charts -->
+                    <!-- Real-time Charts -->
                     <div class="col-12 mb-4">
                         <div class="card border-0 shadow-sm">
                             <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0">
                                     <i class="fas fa-chart-line me-2"></i>
-                                    Recent Trends (Last 10 minutes)
+                                    Real-time Trends
+                                    <span class="real-time-badge badge bg-info ms-2">Live</span>
                                 </h6>
                                 <div>
                                     <button class="btn btn-sm btn-outline-primary me-2" id="refreshDataBtn">
@@ -327,9 +645,62 @@
                                 </div>
                             </div>
                             <div class="card-body">
-                                <div class="chart-container" style="position: relative; height: 300px;">
+                                <div class="chart-container">
                                     <canvas id="sensorChart"></canvas>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Prediction Chart -->
+                    <div class="col-12 mb-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-brain me-2"></i>
+                                    Overload Prediction Trend
+                                    <span class="real-time-badge badge bg-info ms-2">Live</span>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="predictionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Enhanced Calming Activities -->
+                    <div class="col-12 mb-4">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-heart me-2 text-danger"></i>
+                                    Interactive Calming Activities
+                                </h6>
+                                <span class="badge bg-danger" id="activitiesCount">6</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">
+                                    Choose from guided calming activities designed to help manage sensory overload. 
+                                    Each activity includes visual guides and step-by-step instructions.
+                                </p>
+                                
+                                <div class="activities-grid" id="activities-container">
+                                    <!-- Activities will be loaded dynamically by dashboard.js -->
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary mb-3" role="status">
+                                            <span class="visually-hidden">Loading activities...</span>
+                                        </div>
+                                        <p class="text-muted">Loading calming activities...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Activities include breathing exercises, grounding techniques, and relaxation methods
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -340,7 +711,7 @@
                             <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0">
                                     <i class="fas fa-lightbulb me-2"></i>
-                                    Recommended Strategies
+                                    AI-Powered Recommendations
                                 </h6>
                                 <span class="badge bg-info" id="recommendationsCount">0</span>
                             </div>
@@ -348,15 +719,15 @@
                                 <div id="recommendationsList">
                                     <div class="text-center py-4">
                                         <i class="fas fa-brain fa-2x text-muted mb-2"></i>
-                                        <p class="text-muted">No recommendations yet. Sensor data analysis in progress.</p>
-                                        <small class="text-muted">Suggestions will appear here when overload is detected</small>
+                                        <p class="text-muted">Analyzing real-time sensor data...</p>
+                                        <small class="text-muted">AI recommendations will appear here automatically</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="card-footer bg-transparent">
                                 <small class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Strategies are personalized based on sensor data and user profile
+                                    <i class="fas fa-robot me-1"></i>
+                                    Strategies are generated in real-time based on sensor data
                                 </small>
                             </div>
                         </div>
@@ -373,12 +744,12 @@
                             <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0">
                                     <i class="fas fa-exclamation-triangle me-2"></i>
-                                    Alert History
+                                    Real-time Alerts
                                 </h6>
                                 <span class="badge bg-danger" id="alertsCount">0</span>
                             </div>
                             <div class="card-body p-0">
-                                <div id="alertList" class="alert-list p-3">
+                                <div id="alertList" class="alert-list p-3" style="max-height: 200px; overflow-y: auto;">
                                     <div class="text-muted text-center py-4">
                                         <i class="fas fa-check-circle fa-2x mb-2"></i>
                                         <p>No alerts detected</p>
@@ -399,20 +770,21 @@
                             <div class="card-header bg-transparent">
                                 <h6 class="mb-0">
                                     <i class="fas fa-brain me-2"></i>
-                                    Overload Prediction
+                                    Current Overload Risk
+                                    <span class="real-time-badge badge bg-info ms-2">Live</span>
                                 </h6>
                             </div>
                             <div class="card-body text-center">
                                 <div class="prediction-gauge mb-3">
-                                    <div class="gauge-container" style="position: relative; width: 120px; height: 120px; margin: 0 auto;">
-                                        <canvas id="predictionGauge" width="120" height="120"></canvas>
-                                        <div class="gauge-value">
-                                            <span id="gaugePercentage">0%</span>
-                                        </div>
+                                    <div class="risk-level-display">
+                                        <div class="risk-percentage" id="riskLevel" style="font-size: 2.5rem; font-weight: bold; color: #198754;">0%</div>
+                                        <div class="risk-label" id="riskLabel" style="font-size: 1rem; color: #6c757d; margin-top: 0.5rem;">Low Risk</div>
                                     </div>
                                 </div>
-                                <div id="predictionStatus" class="prediction-status fw-bold mb-2">Analyzing...</div>
-                                <p class="text-muted small mb-0">Probability of sensory overload</p>
+                                <div class="progress mb-3" style="height: 12px;">
+                                    <div class="progress-bar" id="riskGauge" role="progressbar" style="width: 0%; background: linear-gradient(90deg, #198754, #ffc107, #dc3545);"></div>
+                                </div>
+                                <p class="text-muted small mb-0">Real-time probability of sensory overload</p>
                             </div>
                         </div>
                     </div>
@@ -453,6 +825,12 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="mt-3 text-center">
+                                    <small class="text-muted">
+                                        <i class="fas fa-microchip me-1"></i>
+                                        <span id="updateFrequency">Update frequency: 1Hz</span>
+                                    </small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -460,14 +838,60 @@
             </div>
         </div>
     </div>
+    
+    <!-- Activity Modal -->
+    <div class="modal fade" id="activityModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="activityModalTitle">Calming Activity</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="activityContainer">
+                        <!-- Activity content will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="startActivityBtn">Start Activity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breathing Animation Canvas -->
+    <canvas id="breathingCanvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.8);"></canvas>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 <script>
 // Initialize dashboard when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    initializeDashboard();
+    console.log('🚀 Initializing dashboard...');
+    
+    // Initialize charts from base.html
+    if (typeof initializeCharts === 'function') {
+        initializeCharts();
+    }
+    
+    // Initialize data buffer
+    if (typeof window.dataBuffer === 'undefined') {
+        window.dataBuffer = {
+            timestamps: [],
+            readings: {
+                noise: [],
+                light: [],
+                motion: []
+            },
+            predictions: []
+        };
+    }
+    
+    // Load activities
+    loadEnhancedActivities();
     
     // Add event listeners for view toggle buttons
     const childViewBtn = document.getElementById('childViewBtn');
@@ -481,7 +905,7 @@ document.addEventListener('DOMContentLoaded', function() {
             caregiverView.classList.add('d-none');
             childViewBtn.classList.add('active');
             caregiverViewBtn.classList.remove('active');
-            showToast('Switched to Child View', 'View optimized for children', 'info');
+            showToast('Switched to Child View - Simple, calming interface', 'info', 'View Changed');
         });
         
         caregiverViewBtn.addEventListener('click', function() {
@@ -489,10 +913,33 @@ document.addEventListener('DOMContentLoaded', function() {
             caregiverView.classList.remove('d-none');
             childViewBtn.classList.remove('active');
             caregiverViewBtn.classList.add('active');
-            showToast('Switched to Caregiver View', 'Detailed monitoring view', 'info');
+            showToast('Switched to Caregiver View - Detailed monitoring', 'info', 'View Changed');
         });
     }
+    
+    // Initialize system uptime counter
+    startUptimeCounter();
+    
+    console.log('✅ Dashboard initialized successfully');
 });
+
+// System uptime counter
+function startUptimeCounter() {
+    let startTime = Date.now();
+    const uptimeElement = document.getElementById('uptimeValue');
+    
+    setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const hours = Math.floor(elapsed / 3600000);
+        const minutes = Math.floor((elapsed % 3600000) / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        
+        if (uptimeElement) {
+            uptimeElement.textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+    }, 1000);
+}
 
 // Function to update child view with simple suggestions
 function updateChildSuggestion(overloadType, strategy) {
@@ -552,30 +999,53 @@ function getStrategyIcon(strategy) {
     return iconMap[strategy.id] || iconMap.default;
 }
 
-// Generate rating stars based on success rate
-function generateRatingStars(successRate) {
-    const fullStars = Math.floor(successRate / 20);
-    const halfStar = successRate % 20 >= 10 ? 1 : 0;
-    const emptyStars = 5 - fullStars - halfStar;
-    
-    let stars = '';
-    
-    // Add full stars
-    for (let i = 0; i < fullStars; i++) {
-        stars += '<i class="fas fa-star text-warning"></i>';
+// Enhanced activity system
+async function loadEnhancedActivities() {
+    try {
+        const response = await fetch('/api/activities');
+        const activities = await response.json();
+        
+        const container = document.getElementById('activities-container');
+        const countElement = document.getElementById('activitiesCount');
+        
+        if (container && countElement) {
+            container.innerHTML = '';
+            countElement.textContent = activities.length;
+            
+            activities.forEach(activity => {
+                const activityCard = createActivityCard(activity);
+                container.appendChild(activityCard);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading activities:', error);
+        showToast('Failed to load activities', 'error');
     }
+}
+
+function createActivityCard(activity) {
+    const card = document.createElement('div');
+    card.className = 'activity-card';
+    card.innerHTML = `
+        <div class="activity-emoji">${activity.emoji}</div>
+        <div class="activity-name">${activity.name}</div>
+        <div class="activity-description">${activity.description}</div>
+        <div class="activity-meta">
+            <span class="activity-type ${activity.category}">${activity.category}</span>
+            <span>${Math.round(activity.duration / 60)} min</span>
+        </div>
+    `;
     
-    // Add half star
-    if (halfStar) {
-        stars += '<i class="fas fa-star-half-alt text-warning"></i>';
-    }
+    card.addEventListener('click', () => {
+        startCalmingActivity(activity.id);
+    });
     
-    // Add empty stars
-    for (let i = 0; i < emptyStars; i++) {
-        stars += '<i class="far fa-star text-warning"></i>';
-    }
-    
-    return stars;
+    return card;
+}
+
+function startCalmingActivity(activityId) {
+    // Redirect to activities page for full experience
+    window.location.href = '/activities';
 }
 
 // Overload detection function
@@ -624,10 +1094,171 @@ function checkForOverloadAndRecommend(sensorData) {
     }
 }
 
-// Add this to your existing sensor data update function
-// function handleNewSensorData(sensorData) {
-//     // Your existing sensor update code...
-//     checkForOverloadAndRecommend(sensorData);
-// }
+// Real-time alert handling
+function handleRealTimeAlert(alertData) {
+    const alertList = document.getElementById('alertList');
+    const alertsCount = document.getElementById('alertsCount');
+    const alertsCountValue = document.getElementById('alertsCountValue');
+    
+    // Create alert element
+    const alertElement = document.createElement('div');
+    alertElement.className = `alert-item ${alertData.level === 'high' ? '' : 'warning'}`;
+    alertElement.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <strong>${alertData.level === 'high' ? '🚨 High Risk' : '⚠️ Warning'}</strong>
+                <div class="small">${alertData.message}</div>
+            </div>
+            <small class="text-muted">${new Date(alertData.timestamp).toLocaleTimeString()}</small>
+        </div>
+    `;
+    
+    // Add to top of alert list
+    if (alertList.firstChild && alertList.firstChild.className.includes('text-muted')) {
+        alertList.removeChild(alertList.firstChild);
+    }
+    alertList.insertBefore(alertElement, alertList.firstChild);
+    
+    // Update counters
+    const currentCount = parseInt(alertsCount.textContent) + 1;
+    alertsCount.textContent = currentCount;
+    alertsCountValue.textContent = currentCount;
+    
+    // Keep only last 10 alerts
+    const alerts = alertList.getElementsByClassName('alert-item');
+    if (alerts.length > 10) {
+        alertList.removeChild(alerts[alerts.length - 1]);
+    }
+}
+
+// Clear alerts function
+document.getElementById('clearAlertsBtn').addEventListener('click', function() {
+    const alertList = document.getElementById('alertList');
+    const alertsCount = document.getElementById('alertsCount');
+    const alertsCountValue = document.getElementById('alertsCountValue');
+    
+    alertList.innerHTML = `
+        <div class="text-muted text-center py-4">
+            <i class="fas fa-check-circle fa-2x mb-2"></i>
+            <p>No alerts detected</p>
+        </div>
+    `;
+    
+    alertsCount.textContent = '0';
+    alertsCountValue.textContent = '0';
+    
+    showToast('All alerts cleared', 'info', 'Alerts Cleared');
+});
+
+// Listen for real-time alerts from server
+if (typeof socket !== 'undefined') {
+    socket.on('alert', function(alertData) {
+        handleRealTimeAlert(alertData);
+    });
+
+    socket.on('overload_alert', function(alertData) {
+        handleRealTimeAlert(alertData);
+    });
+
+    // Listen for real-time sensor updates
+    socket.on('sensor_update', function(data) {
+        console.log('📡 Real-time update received:', data);
+        
+        // Update sensor displays
+        if (window.updateSensorDisplays) {
+            window.updateSensorDisplays(data.sensor_data);
+        }
+        
+        // Update data buffer and charts
+        if (window.updateDataBuffer) {
+            window.updateDataBuffer(data.sensor_data, data.prediction);
+        }
+        
+        // Update risk display
+        if (window.updateRiskDisplay) {
+            window.updateRiskDisplay(data.prediction);
+        }
+        
+        // Check for overload
+        checkForOverloadAndRecommend(data.sensor_data);
+    });
+}
+
+// Enhanced activity completion handler
+function handleActivityCompletion(activityId, rating) {
+    console.log(`Activity ${activityId} completed with rating: ${rating}`);
+    showToast('Activity Completed', 'Great job completing the calming activity!', 'success');
+}
+
+// User profile settings application
+function applyUserSettings(settings) {
+    if (settings.animation_speed === 'slow') {
+        document.documentElement.style.setProperty('--animation-duration', '0.8s');
+    } else if (settings.animation_speed === 'fast') {
+        document.documentElement.style.setProperty('--animation-duration', '0.2s');
+    }
+    
+    if (settings.color_scheme === 'high-contrast') {
+        document.body.classList.add('high-contrast');
+    } else {
+        document.body.classList.remove('high-contrast');
+    }
+    
+    if (settings.reduced_motion) {
+        document.body.classList.add('reduced-motion');
+    } else {
+        document.body.classList.remove('reduced-motion');
+    }
+}
+
+// Helper function to get overload type from sensor data
+function getOverloadType(sensorData) {
+    const thresholds = {
+        noise: { danger: 100 },
+        light: { danger: 8000 },
+        motion: { danger: 80 }
+    };
+    
+    if (sensorData.noise > thresholds.noise.danger) return 'auditory';
+    if (sensorData.light > thresholds.light.danger) return 'visual';
+    if (sensorData.motion > thresholds.motion.danger) return 'motion';
+    return null;
+}
+
+// Helper function to get recommendations
+async function getRecommendations(overloadType) {
+    try {
+        const response = await fetch('/api/sensor-data');
+        const data = await response.json();
+        return data.recommendations || [];
+    } catch (error) {
+        console.error('Error getting recommendations:', error);
+        return [];
+    }
+}
+
+// Helper function to display recommendations
+function displayRecommendations(recommendations, overloadType) {
+    const container = document.getElementById('recommendationsList');
+    const countElement = document.getElementById('recommendationsCount');
+    
+    if (container && countElement) {
+        container.innerHTML = recommendations.map(rec => `
+            <div class="strategy-card ${overloadType} p-3 mb-3 rounded">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0">${rec.title}</h6>
+                    <span class="badge ${rec.priority === 'high' ? 'bg-danger' : 'bg-warning'}">${rec.priority}</span>
+                </div>
+                <p class="mb-2">${rec.description}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">Effectiveness: ${rec.effectiveness}%</small>
+                    <button class="btn btn-sm btn-outline-primary">Try This</button>
+                </div>
+            </div>
+        `).join('');
+        
+        countElement.textContent = recommendations.length;
+    }
+}
 </script>
 {% endblock %}
