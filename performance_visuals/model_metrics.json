@@ -1,0 +1,23 @@
+{
+  "accuracy": 0.93,
+  "precision": 0.9836065573770492,
+  "recall": 0.9090909090909091,
+  "f1_score": 0.9448818897637795,
+  "roc_auc": 0.5240641711229946,
+  "pr_auc": 0.6382497062843927,
+  "confusion_matrix": [
+    [
+      33,
+      1
+    ],
+    [
+      6,
+      60
+    ]
+  ],
+  "feature_importance": {
+    "Noise Level": 0.45,
+    "Light Intensity": 0.35,
+    "Motion Amplitude": 0.2
+  }
+}
