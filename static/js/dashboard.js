@@ -45,6 +45,9 @@ class SensorDashboard {
         // Wait for DOM to be fully ready
         await this.waitForDOM();
         
+        // Clear any existing charts first
+        this.destroyCharts();
+        
         this.setupEventListeners();
         this.setupSocketListeners();
         await this.setupCharts();
@@ -532,53 +535,66 @@ class SensorDashboard {
         try {
             const response = await fetch('/api/profile/enhanced?user_id=default');
             if (response.ok) {
-                this.userProfile = await response.json();
+                const data = await response.json();
+                // Handle both profile structures safely
+                this.userProfile = data.profile || data;
+                
                 console.log('User profile loaded:', this.userProfile);
                 
-                // Apply user settings
+                // Apply user settings with safety checks
                 this.applyUserSettings();
             }
         } catch (error) {
             console.error('Failed to load user profile:', error);
-            // Use default profile
+            // Use default profile with proper structure
             this.userProfile = {
-                profile: {
-                    age: 8,
-                    preferences: {
-                        sensory_preferences: {
-                            noise_sensitivity: 'medium',
-                            light_sensitivity: 'high',
-                            motion_sensitivity: 'low'
-                        },
-                        preferred_activities: ['breathing', 'visual'],
-                        communication_style: 'visual'
+                age: 8,
+                name: 'Alex',
+                preferences: {
+                    sensory_preferences: {
+                        noise_sensitivity: 'medium',
+                        light_sensitivity: 'high',
+                        motion_sensitivity: 'low'
                     },
-                    settings: {
-                        animation_speed: 'normal',
-                        sound_effects: true,
-                        color_scheme: 'calm'
-                    }
+                    preferred_activities: ['breathing', 'visual'],
+                    communication_style: 'visual'
+                },
+                settings: {
+                    animation_speed: 'normal',
+                    sound_effects: true,
+                    color_scheme: 'calm',
+                    reduced_motion: false
+                },
+                history: {
+                    completed_activities: [],
+                    successful_strategies: {},
+                    overload_patterns: []
                 }
             };
         }
     }
 
     applyUserSettings() {
-        const settings = this.userProfile.profile.settings;
+        if (!this.userProfile || !this.userProfile.settings) {
+            console.log('No user settings found, using defaults');
+            return;
+        }
         
-        // Apply animation speed
+        const settings = this.userProfile.settings;
+        
+        // Apply animation speed with safety checks
         if (settings.animation_speed === 'slow') {
             document.documentElement.style.setProperty('--animation-duration', '0.8s');
         } else if (settings.animation_speed === 'fast') {
             document.documentElement.style.setProperty('--animation-duration', '0.2s');
         }
         
-        // Apply color scheme
+        // Apply color scheme with safety checks
         if (settings.color_scheme === 'high-contrast') {
             document.body.classList.add('high-contrast');
         }
         
-        // Apply reduced motion
+        // Apply reduced motion with safety checks
         if (settings.reduced_motion) {
             document.body.classList.add('reduced-motion');
         }
@@ -722,7 +738,7 @@ class SensorDashboard {
         console.log('📊 Setting up charts...');
         
         // Additional delay to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         const sensorChartSuccess = await this.setupSensorChart();
         const predictionChartSuccess = await this.setupPredictionChart();
@@ -733,6 +749,35 @@ class SensorDashboard {
             predictionChart: predictionChartSuccess,
             gaugeChart: gaugeChartSuccess
         });
+    }
+
+    destroyCharts() {
+        console.log('🗑️ Destroying existing charts...');
+        
+        // Destroy all existing charts
+        if (this.sensorChart) {
+            this.sensorChart.destroy();
+            this.sensorChart = null;
+        }
+        if (this.predictionChart) {
+            this.predictionChart.destroy();
+            this.predictionChart = null;
+        }
+        if (this.gaugeChart) {
+            this.gaugeChart.destroy();
+            this.gaugeChart = null;
+        }
+        
+        // Clear any Chart.js instances from the global registry
+        if (typeof Chart !== 'undefined' && Chart.instances) {
+            Object.keys(Chart.instances).forEach(key => {
+                try {
+                    Chart.instances[key].destroy();
+                } catch (e) {
+                    console.log('Error destroying chart instance:', e);
+                }
+            });
+        }
     }
 
     async setupSensorChart() {
@@ -757,12 +802,6 @@ class SensorDashboard {
         }
 
         console.log('📈 Initializing sensor chart...');
-
-        // Destroy existing chart if it exists
-        if (this.sensorChart) {
-            this.sensorChart.destroy();
-            this.sensorChart = null;
-        }
 
         try {
             this.sensorChart = new Chart(ctx, {
@@ -894,12 +933,6 @@ class SensorDashboard {
 
         console.log('📊 Initializing prediction chart...');
 
-        // Destroy existing chart if it exists
-        if (this.predictionChart) {
-            this.predictionChart.destroy();
-            this.predictionChart = null;
-        }
-
         try {
             this.predictionChart = new Chart(ctx, {
                 type: 'line',
@@ -981,17 +1014,11 @@ class SensorDashboard {
         }
         
         if (!ctx) {
-            console.error('❌ Gauge chart canvas not found!');
+            console.log('ℹ️ Gauge chart canvas not found, skipping...');
             return false;
         }
         
         console.log('🎯 Initializing gauge chart...');
-
-        // Destroy existing chart if it exists
-        if (this.gaugeChart) {
-            this.gaugeChart.destroy();
-            this.gaugeChart = null;
-        }
 
         try {
             this.gaugeChart = new Chart(ctx, {
@@ -1125,7 +1152,7 @@ class SensorDashboard {
             element.textContent = value;
         } else {
             // Don't log missing elements that are optional
-            const optionalElements = ['riskValue', 'predictionValue'];
+            const optionalElements = ['riskValue', 'predictionValue', 'gaugePercentage'];
             if (!optionalElements.includes(elementId)) {
                 console.log(`Element not found: ${elementId}`);
             }
@@ -1679,18 +1706,8 @@ class SensorDashboard {
     }
 
     destroy() {
-        if (this.sensorChart) {
-            this.sensorChart.destroy();
-            this.sensorChart = null;
-        }
-        if (this.predictionChart) {
-            this.predictionChart.destroy();
-            this.predictionChart = null;
-        }
-        if (this.gaugeChart) {
-            this.gaugeChart.destroy();
-            this.gaugeChart = null;
-        }
+        this.destroyCharts();
+        
         if (this.socket) {
             this.socket.disconnect();
         }
