@@ -865,6 +865,10 @@ def register_fallback_routes():
             "enhanced_model_loaded": enhanced_model.model is not None
         })
 
+@app.route('/activities')
+def activities():
+    return render_template('activities.html')
+
 # Load models and engines on startup
 load_ml_model()
 recommendation_engine = load_recommendation_engine()
@@ -912,3 +916,5 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
+
+
