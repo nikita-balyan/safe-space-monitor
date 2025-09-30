@@ -1,4 +1,4 @@
-"""
+﻿"""
 Flask application factory and configuration with Real-Time Features
 Enhanced with Interactive Calming Activities, Advanced AI Model, and User Profiles
 Integrated with separate routes.py for better organization
@@ -199,10 +199,10 @@ class EnhancedSensoryModel:
     
     def train(self, n_samples=1000):
         """Train the enhanced model"""
-        print("🔄 Generating training data...")
+        print("ðŸ”„ Generating training data...")
         df = self.generate_training_data(n_samples)
         
-        print("🔧 Extracting features...")
+        print("ðŸ”§ Extracting features...")
         X = self.extract_features(df)
         y = df['overload']
         
@@ -211,7 +211,7 @@ class EnhancedSensoryModel:
             X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        print("🤖 Training Random Forest model...")
+        print("ðŸ¤– Training Random Forest model...")
         self.model = RandomForestClassifier(
             n_estimators=100,
             max_depth=10,
@@ -228,10 +228,10 @@ class EnhancedSensoryModel:
         self.precision = precision_score(y_test, y_pred, zero_division=0)
         self.recall = recall_score(y_test, y_pred, zero_division=0)
         
-        print(f"✅ Model trained successfully!")
-        print(f"📊 Accuracy: {self.accuracy:.3f}")
-        print(f"🎯 Precision: {self.precision:.3f}")
-        print(f"📈 Recall: {self.recall:.3f}")
+        print(f"âœ… Model trained successfully!")
+        print(f"ðŸ“Š Accuracy: {self.accuracy:.3f}")
+        print(f"ðŸŽ¯ Precision: {self.precision:.3f}")
+        print(f"ðŸ“ˆ Recall: {self.recall:.3f}")
         
         return self.model
     
@@ -257,7 +257,7 @@ class EnhancedSensoryModel:
             }
             
         except Exception as e:
-            print(f"⚠️ Enhanced model prediction failed: {e}")
+            print(f"âš ï¸ Enhanced model prediction failed: {e}")
             return self._fallback_prediction(sensor_data)
     
     def _create_feature_vector(self, sensor_data):
@@ -329,7 +329,7 @@ class EnhancedSensoryModel:
     def save_model(self, filepath='models/enhanced_sensory_model.joblib'):
         """Save trained model to file"""
         if self.model is None:
-            print("❌ No model to save. Train the model first.")
+            print("âŒ No model to save. Train the model first.")
             return False
         
         import os
@@ -345,7 +345,7 @@ class EnhancedSensoryModel:
         }
         
         joblib.dump(model_data, filepath)
-        print(f"✅ Model saved to {filepath}")
+        print(f"âœ… Model saved to {filepath}")
         return True
     
     def load_model(self, filepath='models/enhanced_sensory_model.joblib'):
@@ -358,12 +358,12 @@ class EnhancedSensoryModel:
             self.precision = model_data['precision']
             self.recall = model_data['recall']
             
-            print(f"✅ Model loaded from {filepath}")
-            print(f"📊 Previous performance - Accuracy: {self.accuracy:.3f}")
+            print(f"âœ… Model loaded from {filepath}")
+            print(f"ðŸ“Š Previous performance - Accuracy: {self.accuracy:.3f}")
             return True
             
         except Exception as e:
-            print(f"❌ Failed to load model: {e}")
+            print(f"âŒ Failed to load model: {e}")
             return False
 
 # Global enhanced model instance
@@ -371,7 +371,7 @@ enhanced_model = EnhancedSensoryModel()
 
 def initialize_enhanced_model():
     """Initialize and train the enhanced model"""
-    print("🚀 Initializing Enhanced Sensory Model...")
+    print("ðŸš€ Initializing Enhanced Sensory Model...")
     
     # Try to load existing model first
     if enhanced_model.load_model():
@@ -412,8 +412,8 @@ def load_ml_model():
                 "message": "Enhanced model with advanced features"
             }
             
-            logger.info("✓ Enhanced ML model loaded successfully")
-            logger.info(f"✓ Model accuracy: {model_metadata['accuracy']:.3f}")
+            logger.info("âœ“ Enhanced ML model loaded successfully")
+            logger.info(f"âœ“ Model accuracy: {model_metadata['accuracy']:.3f}")
             return
     except Exception as e:
         logger.error(f"Error loading enhanced model: {e}")
@@ -453,7 +453,7 @@ def load_recommendation_engine():
     try:
         from recommendation_engine import recommendation_engine
         app.config['RECOMMENDATION_ENGINE'] = recommendation_engine
-        logger.info("✓ Recommendation engine loaded successfully")
+        logger.info("âœ“ Recommendation engine loaded successfully")
         return recommendation_engine
     except ImportError as e:
         logger.error(f"Failed to load recommendation engine: {e}")
@@ -872,9 +872,9 @@ recommendation_engine = load_recommendation_engine()
 # Initialize enhanced model
 try:
     enhanced_model = initialize_enhanced_model()
-    logger.info("✅ Enhanced sensory model initialized")
+    logger.info("âœ… Enhanced sensory model initialized")
 except Exception as e:
-    logger.error(f"❌ Failed to initialize enhanced model: {e}")
+    logger.error(f"âŒ Failed to initialize enhanced model: {e}")
 
 # Import and register routes from separate routes.py file if exists
 routes_loaded = False
@@ -882,16 +882,16 @@ try:
     from routes import register_routes
     # Register all routes from routes.py
     register_routes(app, model, threshold, model_metadata, THRESHOLDS)
-    logger.info("✅ All routes from routes.py registered successfully")
+    logger.info("âœ… All routes from routes.py registered successfully")
     routes_loaded = True
 except ImportError as e:
-    logger.warning(f"⚠️  routes.py not found, using built-in routes: {e}")
+    logger.warning(f"âš ï¸  routes.py not found, using built-in routes: {e}")
 except Exception as e:
-    logger.error(f"❌ Failed to register routes from routes.py: {e}")
+    logger.error(f"âŒ Failed to register routes from routes.py: {e}")
 
 # Register fallback routes if routes.py failed to load
 if not routes_loaded:
-    logger.info("🔄 Registering fallback routes from app.py")
+    logger.info("ðŸ”„ Registering fallback routes from app.py")
     register_fallback_routes()
 
 # Start background threads
@@ -910,14 +910,14 @@ start_background_services()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    logger.info(f"🚀 Starting Flask server with real-time features on port {port}")
-    logger.info("📊 Dashboard: http://localhost:5000")
-    logger.info("📊 Dashboard (alt): http://localhost:5000/dashboard")
-    logger.info("👤 Profile: http://localhost:5000/profile")
-    logger.info("🧘 Breathing Exercises: http://localhost:5000/breathing")
-    logger.info("⚙️ Sensor Settings: http://localhost:5000/sensor-settings")
-    logger.info("🔌 Real-time WebSocket: Active")
-    logger.info("⚡ 1Hz Data Sampling: Enabled")
-    logger.info("🎯 Enhanced Features: Interactive Activities, Advanced AI, User Profiles")
+    logger.info(f"ðŸš€ Starting Flask server with real-time features on port {port}")
+    logger.info("ðŸ“Š Dashboard: http://localhost:5000")
+    logger.info("ðŸ“Š Dashboard (alt): http://localhost:5000/dashboard")
+    logger.info("ðŸ‘¤ Profile: http://localhost:5000/profile")
+    logger.info("ðŸ§˜ Breathing Exercises: http://localhost:5000/breathing")
+    logger.info("âš™ï¸ Sensor Settings: http://localhost:5000/sensor-settings")
+    logger.info("ðŸ”Œ Real-time WebSocket: Active")
+    logger.info("âš¡ 1Hz Data Sampling: Enabled")
+    logger.info("ðŸŽ¯ Enhanced Features: Interactive Activities, Advanced AI, User Profiles")
     
     socketio.run(app, host="0.0.0.0", port=port, debug=True, allow_unsafe_werkzeug=True)
