@@ -109,6 +109,33 @@
     animation: pulse 2s infinite;
 }
 
+/* Activity List Cards (Non-interactive) */
+.activity-list-card {
+    transition: all 0.2s ease;
+    border: 1px solid #e9ecef;
+    cursor: default;
+}
+
+.activity-list-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #dee2e6;
+}
+
+.activity-list-card .card-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Remove click effects for list view */
+.activity-list-card {
+    pointer-events: none;
+}
+
+.activity-list-card .btn {
+    pointer-events: auto;
+}
+
 @keyframes pulse {
     0% { opacity: 1; }
     50% { opacity: 0.7; }
@@ -269,39 +296,77 @@
 
 /* Activity Instructions */
 .instruction-step {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background: #f8fafc;
-    border-radius: 8px;
-    border-left: 3px solid #3B82F6;
+    padding: 12px 15px;
+    border-left: 4px solid #dee2e6;
+    margin-bottom: 8px;
+    background: #f8f9fa;
+    border-radius: 0 8px 8px 0;
+    transition: all 0.3s ease;
 }
 
-.step-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    background: #3B82F6;
-    color: white;
+.instruction-step.active {
+    background: #e7f3ff !important;
+    border-left-color: #007bff !important;
+    transform: translateX(5px);
+}
+
+.instruction-step.completed {
+    background: #e8f5e8 !important;
+    border-left-color: #4caf50 !important;
+    opacity: 0.8;
+}
+
+.phase-indicator {
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-right: 0.75rem;
+    margin-right: 10px;
     flex-shrink: 0;
 }
 
-.step-text {
-    flex: 1;
-    font-size: 0.9rem;
+.phase-prepare { background-color: #17a2b8; }
+.phase-inhale { background-color: #28a745; }
+.phase-exhale { background-color: #dc3545; }
+.phase-hold { background-color: #ffc107; }
+.phase-visualize { background-color: #6f42c1; }
+.phase-relax { background-color: #20c997; }
+
+/* Animation Preview */
+.animation-preview {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.5rem;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    background: linear-gradient(135deg, #667eea, #764ba2);
 }
 
-.step-duration {
-    color: #6b7280;
-    font-size: 0.8rem;
-    margin-left: 0.5rem;
+/* Voice Options */
+.voice-option {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 15px;
+    margin: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    min-width: 120px;
+}
+
+.voice-option:hover {
+    border-color: #adb5bd;
+    transform: translateY(-2px);
+}
+
+.voice-option.selected {
+    border-color: #007bff !important;
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb) !important;
+    transform: translateY(-2px);
 }
 
 /* Fullscreen Activity Canvas */
@@ -670,7 +735,7 @@
                         </div>
                     </div>
                     
-                    <!-- Enhanced Calming Activities -->
+                    <!-- Enhanced Calming Activities - List View Only -->
                     <div class="col-12 mb-4">
                         <div class="card border-0 shadow-sm">
                             <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
@@ -678,28 +743,23 @@
                                     <i class="fas fa-heart me-2 text-danger"></i>
                                     Interactive Calming Activities
                                 </h6>
-                                <span class="badge bg-danger" id="activitiesCount">6</span>
+                                <a href="/activities" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt me-1"></i>Open Activities Dashboard
+                                </a>
                             </div>
                             <div class="card-body">
                                 <p class="text-muted mb-3">
-                                    Choose from guided calming activities designed to help manage sensory overload. 
-                                    Each activity includes visual guides and step-by-step instructions.
+                                    These calming activities are available in the Activities Dashboard. Click "Open Activities Dashboard" to access interactive sessions with guided instructions, animations, and voice guidance.
                                 </p>
                                 
-                                <div class="activities-grid" id="activities-container">
-                                    <!-- Activities will be loaded dynamically by dashboard.js -->
-                                    <div class="text-center py-4">
-                                        <div class="spinner-border text-primary mb-3" role="status">
-                                            <span class="visually-hidden">Loading activities...</span>
-                                        </div>
-                                        <p class="text-muted">Loading calming activities...</p>
-                                    </div>
+                                <div class="row" id="activitiesGrid">
+                                    <!-- Activities will be loaded here immediately -->
                                 </div>
                             </div>
                             <div class="card-footer bg-transparent">
                                 <small class="text-muted">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Activities include breathing exercises, grounding techniques, and relaxation methods
+                                    Full interactive features available in the Activities Dashboard
                                 </small>
                             </div>
                         </div>
@@ -860,6 +920,93 @@
         </div>
     </div>
 
+    <!-- Voice Settings Modal -->
+    <div class="modal fade" id="voiceSettingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Voice Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Voice Option</label>
+                        <div class="d-flex flex-wrap" id="voiceOptions">
+                            <!-- Voice options will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Speech Rate: <span id="speechRateValue">Normal Speed (1.0x)</span></label>
+                        <input type="range" class="form-range" id="speechRate" min="0.5" max="2" step="0.1" value="1.0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Volume: <span id="volumeValue">80% Volume</span></label>
+                        <input type="range" class="form-range" id="volume" min="0" max="1" step="0.1" value="0.8">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveVoiceSettings">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Session Modal -->
+    <div class="modal fade" id="activitySessionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="activitySessionTitle">Activity Session</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <h4 id="activityName">Activity Name</h4>
+                        <div class="activity-emoji" id="activityEmoji" style="font-size: 3rem;">🌬️</div>
+                    </div>
+                    
+                    <!-- Animation Preview -->
+                    <div class="text-center mb-4">
+                        <div class="animation-preview mx-auto" id="animationContainer">
+                            <i class="fas fa-wind" id="animationIcon"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Instruction -->
+                    <div class="alert alert-info text-center mb-4">
+                        <h6 id="currentInstruction">Get ready to begin...</h6>
+                    </div>
+                    
+                    <!-- Progress -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Session Progress</span>
+                            <span id="timeRemaining">Starting soon...</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" id="sessionProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Instructions List -->
+                    <div class="mb-4">
+                        <h6>Instructions:</h6>
+                        <div id="instructionsList">
+                            <!-- Instructions will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="stopActivityBtn">Stop</button>
+                    <button type="button" class="btn btn-warning d-none" id="pauseActivityBtn">Pause</button>
+                    <button type="button" class="btn btn-success d-none" id="resumeActivityBtn">Resume</button>
+                    <button type="button" class="btn btn-primary" id="startActivityBtn">Start Activity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Breathing Animation Canvas -->
     <canvas id="breathingCanvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.8);"></canvas>
 </div>
@@ -877,21 +1024,8 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeCharts();
     }
     
-    // Initialize data buffer
-    if (typeof window.dataBuffer === 'undefined') {
-        window.dataBuffer = {
-            timestamps: [],
-            readings: {
-                noise: [],
-                light: [],
-                motion: []
-            },
-            predictions: []
-        };
-    }
-    
-    // Load activities
-    loadEnhancedActivities();
+    // Load activities list immediately (no loading state)
+    loadActivitiesList();
     
     // Add event listeners for view toggle buttons
     const childViewBtn = document.getElementById('childViewBtn');
@@ -941,160 +1075,197 @@ function startUptimeCounter() {
     }, 1000);
 }
 
-// Function to update child view with simple suggestions
-function updateChildSuggestion(overloadType, strategy) {
-    const suggestionElement = document.getElementById('childSuggestion');
-    const statusElement = document.getElementById('childStatusCard');
-    const emojiElement = document.getElementById('statusEmoji');
-    const textElement = document.getElementById('statusText');
-    const detailsElement = document.getElementById('statusDetails');
+// Load activities list immediately
+function loadActivitiesList() {
+    console.log('📋 Loading activities list...');
     
-    // Add animation classes
-    statusElement.classList.add('fade-in');
-    emojiElement.classList.add('emoji-transition');
-    
-    if (overloadType && strategy) {
-        // Overload detected - show suggestion
-        suggestionElement.innerHTML = `
-            <i class="fas ${getStrategyIcon(strategy)} me-2 text-warning"></i>
-            <strong>Try this:</strong> ${strategy.name}
-        `;
-        
-        statusElement.className = 'child-view-card text-center p-5 rounded-4 shadow-lg status-warning fade-in';
-        emojiElement.textContent = '😟';
-        textElement.textContent = 'Getting overwhelmed';
-        detailsElement.textContent = `${overloadType} level is high`;
-    } else {
-        // Normal state
-        suggestionElement.innerHTML = `
-            <i class="fas fa-smile me-2 text-success"></i>
-            Everything is perfect right now!
-        `;
-        
-        statusElement.className = 'child-view-card text-center p-5 rounded-4 shadow-lg status-good fade-in';
-        emojiElement.textContent = '😊';
-        textElement.textContent = 'All Good!';
-        detailsElement.textContent = 'Everything looks perfect';
-    }
-    
-    // Remove animation classes after animation completes
-    setTimeout(() => {
-        statusElement.classList.remove('fade-in');
-        emojiElement.classList.remove('emoji-transition');
-    }, 1000);
+    // Use sample activities immediately (no API call, no loading state)
+    const activities = getSampleActivities();
+    displayActivitiesList(activities);
 }
 
-function getStrategyIcon(strategy) {
-    const iconMap = {
-        'noise_cancelling_headphones': 'fa-headphones',
-        'white_noise': 'fa-wave-square',
-        'calming_music': 'fa-music',
-        'dim_lights': 'fa-lightbulb',
-        'blue_light_filter': 'fa-glasses',
-        'deep_pressure': 'fa-weight-hanging',
-        'deep_breathing': 'fa-wind',
-        'counting_exercise': 'fa-calculator',
-        'default': 'fa-lightbulb'
-    };
-    return iconMap[strategy.id] || iconMap.default;
-}
-
-// Enhanced activity system
-async function loadEnhancedActivities() {
-    try {
-        const response = await fetch('/api/activities');
-        const activities = await response.json();
-        
-        const container = document.getElementById('activities-container');
-        const countElement = document.getElementById('activitiesCount');
-        
-        if (container && countElement) {
-            container.innerHTML = '';
-            countElement.textContent = activities.length;
-            
-            activities.forEach(activity => {
-                const activityCard = createActivityCard(activity);
-                container.appendChild(activityCard);
-            });
+// Sample activities data
+function getSampleActivities() {
+    return [
+        {
+            id: 1,
+            name: "Deep Breathing",
+            description: "Follow the breathing ball to calm your mind",
+            difficulty: "beginner",
+            duration: 300,
+            emoji: "🌬️",
+            color: "#667eea",
+            age_range: "5+",
+            benefits: ["Calming", "Focus", "Relaxation"],
+            accessibility: ["visual", "audio"]
+        },
+        {
+            id: 2,
+            name: "Muscle Relaxation",
+            description: "Tense and relax different muscle groups",
+            difficulty: "intermediate",
+            duration: 600,
+            emoji: "💪",
+            color: "#764ba2",
+            age_range: "7+",
+            benefits: ["Relaxation", "Body Awareness", "Calming"],
+            accessibility: ["visual", "haptic"]
+        },
+        {
+            id: 3,
+            name: "Guided Visualization",
+            description: "Imagine a peaceful, happy place",
+            difficulty: "beginner",
+            duration: 480,
+            emoji: "🌈",
+            color: "#f093fb",
+            age_range: "6+",
+            benefits: ["Imagination", "Calming", "Focus"],
+            accessibility: ["visual", "audio"]
+        },
+        {
+            id: 4,
+            name: "Counting Breath",
+            description: "Count your breaths to focus and calm",
+            difficulty: "beginner",
+            duration: 240,
+            emoji: "🔢",
+            color: "#4facfe",
+            age_range: "4+",
+            benefits: ["Focus", "Counting", "Calming"],
+            accessibility: ["visual", "audio"]
+        },
+        {
+            id: 5,
+            name: "5-4-3-2-1 Grounding",
+            description: "Use your senses to stay present",
+            difficulty: "beginner",
+            duration: 180,
+            emoji: "🌍",
+            color: "#43e97b",
+            age_range: "8+",
+            benefits: ["Grounding", "Focus", "Awareness"],
+            accessibility: ["visual", "audio"]
+        },
+        {
+            id: 6,
+            name: "Progressive Relaxation",
+            description: "Systematically relax each body part",
+            difficulty: "intermediate",
+            duration: 420,
+            emoji: "😴",
+            color: "#a8edea",
+            age_range: "10+",
+            benefits: ["Deep Relaxation", "Body Awareness", "Sleep"],
+            accessibility: ["audio", "haptic"]
         }
-    } catch (error) {
-        console.error('Error loading activities:', error);
-        showToast('Failed to load activities', 'error');
-    }
+    ];
 }
 
-function createActivityCard(activity) {
-    const card = document.createElement('div');
-    card.className = 'activity-card';
-    card.innerHTML = `
-        <div class="activity-emoji">${activity.emoji}</div>
-        <div class="activity-name">${activity.name}</div>
-        <div class="activity-description">${activity.description}</div>
-        <div class="activity-meta">
-            <span class="activity-type ${activity.category}">${activity.category}</span>
-            <span>${Math.round(activity.duration / 60)} min</span>
+// Display activities as list (non-interactive)
+function displayActivitiesList(activities) {
+    const container = document.getElementById('activitiesGrid');
+    
+    if (!container) {
+        console.error('Activities container not found');
+        return;
+    }
+
+    container.innerHTML = activities.map(activity => `
+        <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+            <div class="card h-100 activity-list-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="activity-emoji me-3" style="font-size: 2rem;">${activity.emoji}</div>
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-1">${activity.name}</h6>
+                            <p class="card-text text-muted small mb-2">${activity.description}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <span class="badge ${getDifficultyClass(activity.difficulty)}">
+                            ${activity.difficulty}
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            ${Math.floor(activity.duration / 60)}min
+                        </span>
+                        <span class="badge bg-info">${activity.age_range}</span>
+                    </div>
+                    
+                    <div class="mb-2">
+                        ${activity.benefits.map(benefit => 
+                            `<span class="badge bg-light text-dark me-1 mb-1 small">${benefit}</span>`
+                        ).join('')}
+                    </div>
+                    
+                    <div class="accessibility-icons">
+                        ${activity.accessibility.map(access => 
+                            `<i class="fas fa-${getAccessibilityIcon(access)} me-1 text-muted small" title="${access}"></i>`
+                        ).join('')}
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <small class="text-muted">
+                        <i class="fas fa-external-link-alt me-1"></i>
+                        Available in Activities Dashboard
+                    </small>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    console.log(`✅ Displayed ${activities.length} activities`);
+}
+
+function getDifficultyClass(difficulty) {
+    const classes = {
+        'beginner': 'bg-success',
+        'intermediate': 'bg-warning',
+        'advanced': 'bg-danger'
+    };
+    return classes[difficulty] || 'bg-secondary';
+}
+
+function getAccessibilityIcon(accessType) {
+    const icons = {
+        'visual': 'eye',
+        'audio': 'volume-up',
+        'haptic': 'hand-paper',
+        'tactile': 'hand-holding'
+    };
+    return icons[accessType] || 'universal-access';
+}
+
+// Simple toast function
+function showToast(message, type = 'info', title = '') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} position-fixed`;
+    toast.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 1060;
+        min-width: 300px;
+    `;
+    toast.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                ${title ? `<strong>${title}</strong><br>` : ''}
+                <span>${message}</span>
+            </div>
+            <button type="button" class="btn-close ms-3" data-bs-dismiss="alert"></button>
         </div>
     `;
+    document.body.appendChild(toast);
     
-    card.addEventListener('click', () => {
-        startCalmingActivity(activity.id);
-    });
-    
-    return card;
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 4000);
 }
 
-function startCalmingActivity(activityId) {
-    // Redirect to activities page for full experience
-    window.location.href = '/activities';
-}
-
-// Overload detection function
-function checkForOverloadAndRecommend(sensorData) {
-    const overloadType = getOverloadType(sensorData);
-    
-    if (overloadType) {
-        // Get recommendations
-        getRecommendations(overloadType).then(recommendations => {
-            if (recommendations.length > 0) {
-                // Update caregiver view
-                displayRecommendations(recommendations, overloadType);
-                
-                // Update child view with simple suggestion
-                updateChildSuggestion(overloadType, recommendations[0]);
-                
-                // Show notification
-                showToast(
-                    'Overload Detected',
-                    `${overloadType} levels are high. Showing recommendations.`,
-                    'warning'
-                );
-                
-                // Update overload status badge
-                document.getElementById('overloadStatus').textContent = `${overloadType} overload`;
-                document.getElementById('overloadStatus').className = 'badge bg-warning';
-            }
-        });
-    } else {
-        // Clear recommendations if no overload
-        document.getElementById('recommendationsList').innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                <p class="text-success">No overload detected</p>
-                <small class="text-muted">Sensor levels are normal</small>
-            </div>
-        `;
-        document.getElementById('recommendationsCount').textContent = '0';
-        
-        // Reset child view
-        updateChildSuggestion(null, null);
-        
-        // Reset overload status
-        document.getElementById('overloadStatus').textContent = 'Normal';
-        document.getElementById('overloadStatus').className = 'badge bg-success';
-    }
-}
-
-// Real-time alert handling
+// Real-time alert handling (for sensor alerts only)
 function handleRealTimeAlert(alertData) {
     const alertList = document.getElementById('alertList');
     const alertsCount = document.getElementById('alertsCount');
@@ -1109,7 +1280,7 @@ function handleRealTimeAlert(alertData) {
                 <strong>${alertData.level === 'high' ? '🚨 High Risk' : '⚠️ Warning'}</strong>
                 <div class="small">${alertData.message}</div>
             </div>
-            <small class="text-muted">${new Date(alertData.timestamp).toLocaleTimeString()}</small>
+            <small class="text-muted">${new Date().toLocaleTimeString()}</small>
         </div>
     `;
     
@@ -1122,7 +1293,7 @@ function handleRealTimeAlert(alertData) {
     // Update counters
     const currentCount = parseInt(alertsCount.textContent) + 1;
     alertsCount.textContent = currentCount;
-    alertsCountValue.textContent = currentCount;
+    if (alertsCountValue) alertsCountValue.textContent = currentCount;
     
     // Keep only last 10 alerts
     const alerts = alertList.getElementsByClassName('alert-item');
@@ -1145,7 +1316,7 @@ document.getElementById('clearAlertsBtn').addEventListener('click', function() {
     `;
     
     alertsCount.textContent = '0';
-    alertsCountValue.textContent = '0';
+    if (alertsCountValue) alertsCountValue.textContent = '0';
     
     showToast('All alerts cleared', 'info', 'Alerts Cleared');
 });
@@ -1159,106 +1330,6 @@ if (typeof socket !== 'undefined') {
     socket.on('overload_alert', function(alertData) {
         handleRealTimeAlert(alertData);
     });
-
-    // Listen for real-time sensor updates
-    socket.on('sensor_update', function(data) {
-        console.log('📡 Real-time update received:', data);
-        
-        // Update sensor displays
-        if (window.updateSensorDisplays) {
-            window.updateSensorDisplays(data.sensor_data);
-        }
-        
-        // Update data buffer and charts
-        if (window.updateDataBuffer) {
-            window.updateDataBuffer(data.sensor_data, data.prediction);
-        }
-        
-        // Update risk display
-        if (window.updateRiskDisplay) {
-            window.updateRiskDisplay(data.prediction);
-        }
-        
-        // Check for overload
-        checkForOverloadAndRecommend(data.sensor_data);
-    });
-}
-
-// Enhanced activity completion handler
-function handleActivityCompletion(activityId, rating) {
-    console.log(`Activity ${activityId} completed with rating: ${rating}`);
-    showToast('Activity Completed', 'Great job completing the calming activity!', 'success');
-}
-
-// User profile settings application
-function applyUserSettings(settings) {
-    if (settings.animation_speed === 'slow') {
-        document.documentElement.style.setProperty('--animation-duration', '0.8s');
-    } else if (settings.animation_speed === 'fast') {
-        document.documentElement.style.setProperty('--animation-duration', '0.2s');
-    }
-    
-    if (settings.color_scheme === 'high-contrast') {
-        document.body.classList.add('high-contrast');
-    } else {
-        document.body.classList.remove('high-contrast');
-    }
-    
-    if (settings.reduced_motion) {
-        document.body.classList.add('reduced-motion');
-    } else {
-        document.body.classList.remove('reduced-motion');
-    }
-}
-
-// Helper function to get overload type from sensor data
-function getOverloadType(sensorData) {
-    const thresholds = {
-        noise: { danger: 100 },
-        light: { danger: 8000 },
-        motion: { danger: 80 }
-    };
-    
-    if (sensorData.noise > thresholds.noise.danger) return 'auditory';
-    if (sensorData.light > thresholds.light.danger) return 'visual';
-    if (sensorData.motion > thresholds.motion.danger) return 'motion';
-    return null;
-}
-
-// Helper function to get recommendations
-async function getRecommendations(overloadType) {
-    try {
-        const response = await fetch('/api/sensor-data');
-        const data = await response.json();
-        return data.recommendations || [];
-    } catch (error) {
-        console.error('Error getting recommendations:', error);
-        return [];
-    }
-}
-
-// Helper function to display recommendations
-function displayRecommendations(recommendations, overloadType) {
-    const container = document.getElementById('recommendationsList');
-    const countElement = document.getElementById('recommendationsCount');
-    
-    if (container && countElement) {
-        container.innerHTML = recommendations.map(rec => `
-            <div class="strategy-card ${overloadType} p-3 mb-3 rounded">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="mb-0">${rec.title}</h6>
-                    <span class="badge ${rec.priority === 'high' ? 'bg-danger' : 'bg-warning'}">${rec.priority}</span>
-                </div>
-                <p class="mb-2">${rec.description}</p>
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">Effectiveness: ${rec.effectiveness}%</small>
-                    <button class="btn btn-sm btn-outline-primary">Try This</button>
-                </div>
-            </div>
-        `).join('');
-        
-        countElement.textContent = recommendations.length;
-    }
 }
 </script>
 {% endblock %}
