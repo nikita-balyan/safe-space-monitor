@@ -903,36 +903,94 @@ def complete_activity_session():
 
 @app.route('/api/activities')
 def get_activities():
-    try:
-        import json
-        import os
-        # Use absolute path for Railway
-        file_path = os.path.join(os.path.dirname(__file__), 'data', 'activities.json')
-        
-        if os.path.exists(file_path):
-            with open(file_path, 'r', encoding='utf-8') as f:
-                activities_data = json.load(f)
-            return jsonify(activities_data)
-        else:
-            # Fallback data
-            return jsonify({
-                "activities": [
-                    {"id": 1, "name": "Deep Breathing", "type": "breathing", "duration": 5, "description": "Follow the breathing circle"},
-                    {"id": 2, "name": "Guided Meditation", "type": "meditation", "duration": 10, "description": "Listen to calming guidance"},
-                    {"id": 3, "name": "Calming Sounds", "type": "audio", "duration": 15, "description": "Nature sounds and white noise"}
+    return jsonify({
+        "activities": [
+            {
+                "id": 1,
+                "name": "Deep Breathing",
+                "description": "Follow the breathing circle to calm your mind",
+                "duration": 300,
+                "type": "breathing",
+                "emoji": "🌬️",
+                "color": "#4CAF50",
+                "difficulty": "beginner",
+                "age_range": "4+",
+                "benefits": ["Calming", "Focus", "Relaxation"],
+                "accessibility": ["visual", "audio"],
+                "instructions": [
+                    {"text": "Get comfortable and relax your shoulders", "duration": 5, "phase": "prepare"},
+                    {"text": "Breathe in slowly through your nose", "duration": 4, "phase": "inhale"},
+                    {"text": "Hold your breath for a moment", "duration": 2, "phase": "hold"},
+                    {"text": "Breathe out slowly through your mouth", "duration": 6, "phase": "exhale"}
                 ]
-            })
-    except Exception as e:
-        print(f"API Error: {e}")
-        return jsonify({"error": "Failed to load activities"}), 500
+            },
+            {
+                "id": 2,
+                "name": "Guided Meditation",
+                "description": "Listen to calming guidance for relaxation",
+                "duration": 600,
+                "type": "meditation",
+                "emoji": "🧘",
+                "color": "#2196F3",
+                "difficulty": "beginner",
+                "age_range": "6+",
+                "benefits": ["Relaxation", "Mindfulness", "Stress Relief"],
+                "accessibility": ["audio"],
+                "instructions": [
+                    {"text": "Find a comfortable sitting position", "duration": 10, "phase": "prepare"},
+                    {"text": "Close your eyes and focus on your breathing", "duration": 30, "phase": "inhale"},
+                    {"text": "Notice any thoughts without judgment", "duration": 20, "phase": "hold"},
+                    {"text": "Slowly return your awareness", "duration": 10, "phase": "exhale"}
+                ]
+            },
+            {
+                "id": 3,
+                "name": "Calming Sounds",
+                "description": "Nature sounds and white noise for relaxation",
+                "duration": 900,
+                "type": "audio",
+                "emoji": "🎵",
+                "color": "#9C27B0",
+                "difficulty": "beginner",
+                "age_range": "3+",
+                "benefits": ["Relaxation", "Sleep Aid", "Focus"],
+                "accessibility": ["audio"],
+                "instructions": [
+                    {"text": "Get comfortable and close your eyes", "duration": 10, "phase": "prepare"},
+                    {"text": "Focus on the calming sounds", "duration": 890, "phase": "inhale"}
+                ]
+            }
+        ]
+    })
 
 @app.route('/api/activities/voice-options')
 def get_voice_options():
     return jsonify({
         "voices": [
-            {"id": 1, "name": "Calm Female", "language": "en-US"},
-            {"id": 2, "name": "Gentle Male", "language": "en-US"},
-            {"id": 3, "name": "Soothing Voice", "language": "en-GB"}
+            {
+                "id": 1,
+                "name": "Calm Female",
+                "language": "en-US",
+                "gender": "female",
+                "description": "Gentle and soothing",
+                "age_suitability": "All ages"
+            },
+            {
+                "id": 2,
+                "name": "Gentle Male", 
+                "language": "en-US",
+                "gender": "male",
+                "description": "Warm and reassuring",
+                "age_suitability": "All ages"
+            },
+            {
+                "id": 3,
+                "name": "Soothing Voice",
+                "language": "en-GB",
+                "gender": "female", 
+                "description": "Calm British accent",
+                "age_suitability": "6+"
+            }
         ]
     })
 
