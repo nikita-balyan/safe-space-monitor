@@ -199,10 +199,10 @@ class EnhancedSensoryModel:
     
     def train(self, n_samples=1000):
         """Train the enhanced model"""
-        print("ðŸ”„ Generating training data...")
+        print("🔄 Generating training data...")
         df = self.generate_training_data(n_samples)
         
-        print("ðŸ”§ Extracting features...")
+        print("🔧 Extracting features...")
         X = self.extract_features(df)
         y = df['overload']
         
@@ -211,7 +211,7 @@ class EnhancedSensoryModel:
             X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        print("ðŸ¤– Training Random Forest model...")
+        print("🤖 Training Random Forest model...")
         self.model = RandomForestClassifier(
             n_estimators=100,
             max_depth=10,
@@ -228,10 +228,10 @@ class EnhancedSensoryModel:
         self.precision = precision_score(y_test, y_pred, zero_division=0)
         self.recall = recall_score(y_test, y_pred, zero_division=0)
         
-        print(f"âœ… Model trained successfully!")
-        print(f"ðŸ“Š Accuracy: {self.accuracy:.3f}")
-        print(f"ðŸŽ¯ Precision: {self.precision:.3f}")
-        print(f"ðŸ“ˆ Recall: {self.recall:.3f}")
+        print(f"✅ Model trained successfully!")
+        print(f"📊 Accuracy: {self.accuracy:.3f}")
+        print(f"🎯 Precision: {self.precision:.3f}")
+        print(f"📈 Recall: {self.recall:.3f}")
         
         return self.model
     
@@ -257,7 +257,7 @@ class EnhancedSensoryModel:
             }
             
         except Exception as e:
-            print(f"âš ï¸ Enhanced model prediction failed: {e}")
+            print(f"⚠️ Enhanced model prediction failed: {e}")
             return self._fallback_prediction(sensor_data)
     
     def _create_feature_vector(self, sensor_data):
@@ -357,7 +357,7 @@ class EnhancedSensoryModel:
     def save_model(self, filepath='models/enhanced_sensory_model.joblib'):
         """Save trained model to file"""
         if self.model is None:
-            print("âŒ No model to save. Train the model first.")
+            print("❌ No model to save. Train the model first.")
             return False
         
         import os
@@ -373,7 +373,7 @@ class EnhancedSensoryModel:
         }
         
         joblib.dump(model_data, filepath)
-        print(f"âœ… Model saved to {filepath}")
+        print(f"✅ Model saved to {filepath}")
         return True
     
     def load_model(self, filepath='models/enhanced_sensory_model.joblib'):
@@ -386,12 +386,12 @@ class EnhancedSensoryModel:
             self.precision = model_data['precision']
             self.recall = model_data['recall']
             
-            print(f"âœ… Model loaded from {filepath}")
-            print(f"ðŸ“Š Previous performance - Accuracy: {self.accuracy:.3f}")
+            print(f"✅ Model loaded from {filepath}")
+            print(f"📊 Previous performance - Accuracy: {self.accuracy:.3f}")
             return True
             
         except Exception as e:
-            print(f"âŒ Failed to load model: {e}")
+            print(f"❌ Failed to load model: {e}")
             return False
 
 # Global enhanced model instance
@@ -399,7 +399,7 @@ enhanced_model = EnhancedSensoryModel()
 
 def initialize_enhanced_model():
     """Initialize and train the enhanced model"""
-    print("ðŸš€ Initializing Enhanced Sensory Model...")
+    print("🚀 Initializing Enhanced Sensory Model...")
     
     # Try to load existing model first
     if enhanced_model.load_model():
@@ -440,8 +440,8 @@ def load_ml_model():
                 "message": "Enhanced model with advanced features"
             }
             
-            logger.info("âœ“ Enhanced ML model loaded successfully")
-            logger.info(f"âœ“ Model accuracy: {model_metadata['accuracy']:.3f}")
+            logger.info("✅ Enhanced ML model loaded successfully")
+            logger.info(f"✅ Model accuracy: {model_metadata['accuracy']:.3f}")
             return
     except Exception as e:
         logger.error(f"Error loading enhanced model: {e}")
@@ -481,7 +481,7 @@ def load_recommendation_engine():
     try:
         from recommendation_engine import recommendation_engine
         app.config['RECOMMENDATION_ENGINE'] = recommendation_engine
-        logger.info("âœ“ Recommendation engine loaded successfully")
+        logger.info("✅ Recommendation engine loaded successfully")
         return recommendation_engine
     except ImportError as e:
         logger.error(f"Failed to load recommendation engine: {e}")
@@ -820,9 +820,12 @@ def get_overload_message(overload_type):
     }
     return messages.get(overload_type, 'Sensory overload detected. Try calming activities.')
 
-# Essential Routes (only define these if routes.py doesn't exist or fails to load)
-def register_fallback_routes():
-    """Register fallback routes in case routes.py fails"""
+# =============================================================================
+# ROUTE REGISTRATION - FIXED TO PREVENT ENDPOINT CONFLICTS
+# =============================================================================
+
+def register_routes():
+    """Register all application routes with unique endpoint names"""
     
     @app.route('/')
     def home():
@@ -893,134 +896,138 @@ def register_fallback_routes():
             "enhanced_model_loaded": enhanced_model.model is not None
         })
     
-@app.route('/api/activities/start', methods=['POST'])
-def start_activity_session():
-    try:
-        data = request.get_json()
-        activity_id = data.get('activity_id')
-        
-        # Create a session ID (in a real app, you'd store this in a database)
-        session_id = f"session_{int(datetime.now().timestamp())}"
-        
+    @app.route('/api/activities/start', methods=['POST'])
+    def start_activity_session():
+        try:
+            data = request.get_json()
+            activity_id = data.get('activity_id')
+            
+            # Create a session ID (in a real app, you'd store this in a database)
+            session_id = f"session_{int(datetime.now().timestamp())}"
+            
+            return jsonify({
+                "session_id": session_id,
+                "activity_id": activity_id,
+                "status": "started",
+                "started_at": datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route('/api/activities/complete', methods=['POST'])
+    def complete_activity_session():
+        try:
+            data = request.get_json()
+            session_id = data.get('session_id')
+            activity_id = data.get('activity_id')
+            
+            # In a real app, you'd update the session in a database
+            return jsonify({
+                "session_id": session_id,
+                "activity_id": activity_id,
+                "status": "completed",
+                "completed_at": datetime.now().isoformat(),
+                "message": "Activity completed successfully"
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route('/api/activities')
+    def get_activities():
         return jsonify({
-            "session_id": session_id,
-            "activity_id": activity_id,
-            "status": "started",
-            "started_at": datetime.now().isoformat()
+            "activities": [
+                {
+                    "id": 1,
+                    "name": "Deep Breathing",
+                    "description": "Follow the breathing circle to calm your mind",
+                    "duration": 300,
+                    "type": "breathing",
+                    "emoji": "🌬️",
+                    "color": "#4CAF50",
+                    "difficulty": "beginner",
+                    "age_range": "4+",
+                    "benefits": ["Calming", "Focus", "Relaxation"],
+                    "accessibility": ["visual", "audio"],
+                    "instructions": [
+                        {"text": "Get comfortable and relax your shoulders", "duration": 5, "phase": "prepare"},
+                        {"text": "Breathe in slowly through your nose", "duration": 4, "phase": "inhale"},
+                        {"text": "Hold your breath for a moment", "duration": 2, "phase": "hold"},
+                        {"text": "Breathe out slowly through your mouth", "duration": 6, "phase": "exhale"}
+                    ]
+                },
+                {
+                    "id": 2,
+                    "name": "Guided Meditation",
+                    "description": "Listen to calming guidance for relaxation",
+                    "duration": 600,
+                    "type": "meditation",
+                    "emoji": "🧘",
+                    "color": "#2196F3",
+                    "difficulty": "beginner",
+                    "age_range": "6+",
+                    "benefits": ["Relaxation", "Mindfulness", "Stress Relief"],
+                    "accessibility": ["audio"],
+                    "instructions": [
+                        {"text": "Find a comfortable sitting position", "duration": 10, "phase": "prepare"},
+                        {"text": "Close your eyes and focus on your breathing", "duration": 30, "phase": "inhale"},
+                        {"text": "Notice any thoughts without judgment", "duration": 20, "phase": "hold"},
+                        {"text": "Slowly return your awareness", "duration": 10, "phase": "exhale"}
+                    ]
+                },
+                {
+                    "id": 3,
+                    "name": "Calming Sounds",
+                    "description": "Nature sounds and white noise for relaxation",
+                    "duration": 900,
+                    "type": "audio",
+                    "emoji": "🎵",
+                    "color": "#9C27B0",
+                    "difficulty": "beginner",
+                    "age_range": "3+",
+                    "benefits": ["Relaxation", "Sleep Aid", "Focus"],
+                    "accessibility": ["audio"],
+                    "instructions": [
+                        {"text": "Get comfortable and close your eyes", "duration": 10, "phase": "prepare"},
+                        {"text": "Focus on the calming sounds", "duration": 890, "phase": "inhale"}
+                    ]
+                }
+            ]
         })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/activities/complete', methods=['POST'])
-def complete_activity_session():
-    try:
-        data = request.get_json()
-        session_id = data.get('session_id')
-        activity_id = data.get('activity_id')
-        
-        # In a real app, you'd update the session in a database
+    @app.route('/api/activities/voice-options')
+    def get_voice_options():
         return jsonify({
-            "session_id": session_id,
-            "activity_id": activity_id,
-            "status": "completed",
-            "completed_at": datetime.now().isoformat(),
-            "message": "Activity completed successfully"
+            "voices": [
+                {
+                    "id": 1,
+                    "name": "Calm Female",
+                    "language": "en-US",
+                    "gender": "female",
+                    "description": "Gentle and soothing",
+                    "age_suitability": "All ages"
+                },
+                {
+                    "id": 2,
+                    "name": "Gentle Male", 
+                    "language": "en-US",
+                    "gender": "male",
+                    "description": "Warm and reassuring",
+                    "age_suitability": "All ages"
+                },
+                {
+                    "id": 3,
+                    "name": "Soothing Voice",
+                    "language": "en-GB",
+                    "gender": "female", 
+                    "description": "Calm British accent",
+                    "age_suitability": "6+"
+                }
+            ]
         })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/activities')
-def get_activities():
-    return jsonify({
-        "activities": [
-            {
-                "id": 1,
-                "name": "Deep Breathing",
-                "description": "Follow the breathing circle to calm your mind",
-                "duration": 300,
-                "type": "breathing",
-                "emoji": "🌬️",
-                "color": "#4CAF50",
-                "difficulty": "beginner",
-                "age_range": "4+",
-                "benefits": ["Calming", "Focus", "Relaxation"],
-                "accessibility": ["visual", "audio"],
-                "instructions": [
-                    {"text": "Get comfortable and relax your shoulders", "duration": 5, "phase": "prepare"},
-                    {"text": "Breathe in slowly through your nose", "duration": 4, "phase": "inhale"},
-                    {"text": "Hold your breath for a moment", "duration": 2, "phase": "hold"},
-                    {"text": "Breathe out slowly through your mouth", "duration": 6, "phase": "exhale"}
-                ]
-            },
-            {
-                "id": 2,
-                "name": "Guided Meditation",
-                "description": "Listen to calming guidance for relaxation",
-                "duration": 600,
-                "type": "meditation",
-                "emoji": "🧘",
-                "color": "#2196F3",
-                "difficulty": "beginner",
-                "age_range": "6+",
-                "benefits": ["Relaxation", "Mindfulness", "Stress Relief"],
-                "accessibility": ["audio"],
-                "instructions": [
-                    {"text": "Find a comfortable sitting position", "duration": 10, "phase": "prepare"},
-                    {"text": "Close your eyes and focus on your breathing", "duration": 30, "phase": "inhale"},
-                    {"text": "Notice any thoughts without judgment", "duration": 20, "phase": "hold"},
-                    {"text": "Slowly return your awareness", "duration": 10, "phase": "exhale"}
-                ]
-            },
-            {
-                "id": 3,
-                "name": "Calming Sounds",
-                "description": "Nature sounds and white noise for relaxation",
-                "duration": 900,
-                "type": "audio",
-                "emoji": "🎵",
-                "color": "#9C27B0",
-                "difficulty": "beginner",
-                "age_range": "3+",
-                "benefits": ["Relaxation", "Sleep Aid", "Focus"],
-                "accessibility": ["audio"],
-                "instructions": [
-                    {"text": "Get comfortable and close your eyes", "duration": 10, "phase": "prepare"},
-                    {"text": "Focus on the calming sounds", "duration": 890, "phase": "inhale"}
-                ]
-            }
-        ]
-    })
-
-@app.route('/api/activities/voice-options')
-def get_voice_options():
-    return jsonify({
-        "voices": [
-            {
-                "id": 1,
-                "name": "Calm Female",
-                "language": "en-US",
-                "gender": "female",
-                "description": "Gentle and soothing",
-                "age_suitability": "All ages"
-            },
-            {
-                "id": 2,
-                "name": "Gentle Male", 
-                "language": "en-US",
-                "gender": "male",
-                "description": "Warm and reassuring",
-                "age_suitability": "All ages"
-            },
-            {
-                "id": 3,
-                "name": "Soothing Voice",
-                "language": "en-GB",
-                "gender": "female", 
-                "description": "Calm British accent",
-                "age_suitability": "6+"
-            }
-        ]
-    })
+# =============================================================================
+# APPLICATION INITIALIZATION
+# =============================================================================
 
 # Load models and engines on startup
 load_ml_model()
@@ -1029,27 +1036,27 @@ recommendation_engine = load_recommendation_engine()
 # Initialize enhanced model
 try:
     enhanced_model = initialize_enhanced_model()
-    logger.info("âœ… Enhanced sensory model initialized")
+    logger.info("✅ Enhanced sensory model initialized")
 except Exception as e:
-    logger.error(f"âŒ Failed to initialize enhanced model: {e}")
+    logger.error(f"❌ Failed to initialize enhanced model: {e}")
 
 # Import and register routes from separate routes.py file if exists
 routes_loaded = False
 try:
-    from routes import register_routes
+    from routes import register_routes as register_external_routes
     # Register all routes from routes.py
-    register_routes(app, model, threshold, model_metadata, THRESHOLDS)
-    logger.info("âœ… All routes from routes.py registered successfully")
+    register_external_routes(app, model, threshold, model_metadata, THRESHOLDS)
+    logger.info("✅ All routes from routes.py registered successfully")
     routes_loaded = True
 except ImportError as e:
-    logger.warning(f"âš ï¸  routes.py not found, using built-in routes: {e}")
+    logger.warning(f"⚠️  routes.py not found, using built-in routes: {e}")
 except Exception as e:
-    logger.error(f"âŒ Failed to register routes from routes.py: {e}")
+    logger.error(f"❌ Failed to register routes from routes.py: {e}")
 
-# Register fallback routes if routes.py failed to load
+# Register built-in routes if external routes failed to load
 if not routes_loaded:
-    logger.info("ðŸ”„ Registering fallback routes from app.py")
-    register_fallback_routes()
+    logger.info("🔄 Registering built-in routes from app.py")
+    register_routes()
 
 # Start background threads
 def start_background_services():
@@ -1069,5 +1076,3 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
-
-
