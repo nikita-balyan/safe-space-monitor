@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}Sensor Settings - Safe Space Monitor{% endblock %}
+
+{% block extra_head %}
+<style>
+.settings-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #4a6fa5;
+}
+
+.settings-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.threshold-slider {
+    width: 100%;
+    margin: 10px 0;
+}
+
+.slider-value {
+    font-weight: bold;
+    color: #4a6fa5;
+}
+
+.sensor-status {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.status-active {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-inactive {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.progress {
+    height: 8px;
+}
+
+.threshold-indicator {
+    position: absolute;
+    top: -5px;
+    width: 2px;
+    height: 15px;
+    background-color: #ffc107;
+}
+
+.threshold-indicator.danger {
+    background-color: #dc3545;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-sliders-h me-2 text-primary"></i>
+                    Sensor Settings
+                </h1>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sensor Threshold Settings -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card settings-card mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tachometer-alt me-2"></i>
+                        Sensor Threshold Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Noise Threshold -->
+                    <div class="mb-4 p-3 border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <i class="fas fa-volume-up me-2 text-warning"></i>
+                                Noise Level Thresholds
+                            </h6>
+                            <span class="badge bg-warning">dB</span>
+                        </div>
+                        
+                        <div class="position-relative mb-4">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" style="width: 0%"></div>
+                                <div class="threshold-indicator" style="left: 58.3%;"></div>
+                                <div class="threshold-indicator danger" style="left: 83.3%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Warning Threshold</label>
+                                <input type="range" class="threshold-slider" id="noiseWarning" 
+                                       min="50" max="90" value="70" step="5">
+                                <div class="d-flex justify-content-between">
+                                    <small>50 dB</small>
+                                    <span class="slider-value" id="noiseWarningValue">70 dB</span>
+                                    <small>90 dB</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Danger Threshold</label>
+                                <input type="range" class="threshold-slider" id="noiseDanger" 
+                                       min="80" max="120" value="100" step="5">
+                                <div class="d-flex justify-content-between">
+                                    <small>80 dB</small>
+                                    <span class="slider-value" id="noiseDangerValue">100 dB</span>
+                                    <small>120 dB</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Light Threshold -->
+                    <div class="mb-4 p-3 border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <i class="fas fa-lightbulb me-2 text-primary"></i>
+                                Light Level Thresholds
+                            </h6>
+                            <span class="badge bg-primary">lux</span>
+                        </div>
+                        
+                        <div class="position-relative mb-4">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" style="width: 0%"></div>
+                                <div class="threshold-indicator" style="left: 30%;"></div>
+                                <div class="threshold-indicator danger" style="left: 80%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Warning Threshold</label>
+                                <input type="range" class="threshold-slider" id="lightWarning" 
+                                       min="1000" max="5000" value="3000" step="100">
+                                <div class="d-flex justify-content-between">
+                                    <small>1000 lux</small>
+                                    <span class="slider-value" id="lightWarningValue">3000 lux</span>
+                                    <small>5000 lux</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Danger Threshold</label>
+                                <input type="range" class="threshold-slider" id="lightDanger" 
+                                       min="4000" max="10000" value="8000" step="100">
+                                <div class="d-flex justify-content-between">
+                                    <small>4000 lux</small>
+                                    <span class="slider-value" id="lightDangerValue">8000 lux</span>
+                                    <small>10000 lux</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Motion Threshold -->
+                    <div class="mb-4 p-3 border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <i class="fas fa-running me-2 text-success"></i>
+                                Motion Level Thresholds
+                            </h6>
+                            <span class="badge bg-success">units</span>
+                        </div>
+                        
+                        <div class="position-relative mb-4">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" style="width: 0%"></div>
+                                <div class="threshold-indicator" style="left: 50%;"></div>
+                                <div class="threshold-indicator danger" style="left: 80%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Warning Threshold</label>
+                                <input type="range" class="threshold-slider" id="motionWarning" 
+                                       min="20" max="70" value="50" step="5">
+                                <div class="d-flex justify-content-between">
+                                    <small>20 units</small>
+                                    <span class="slider-value" id="motionWarningValue">50 units</span>
+                                    <small>70 units</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Danger Threshold</label>
+                                <input type="range" class="threshold-slider" id="motionDanger" 
+                                       min="50" max="100" value="80" step="5">
+                                <div class="d-flex justify-content-between">
+                                    <small>50 units</small>
+                                    <span class="slider-value" id="motionDangerValue">80 units</span>
+                                    <small>100 units</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensor Status & Actions -->
+        <div class="col-lg-4">
+            <!-- Sensor Status -->
+            <div class="card settings-card mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Sensor Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Noise Sensor</span>
+                            <span class="sensor-status status-active">Active</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Light Sensor</span>
+                            <span class="sensor-status status-active">Active</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Motion Sensor</span>
+                            <span class="sensor-status status-active">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card settings-card mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" id="resetDefaults">
+                            <i class="fas fa-undo me-2"></i>Reset to Defaults
+                        </button>
+                        <button class="btn btn-outline-success" id="saveSettings">
+                            <i class="fas fa-save me-2"></i>Save Settings
+                        </button>
+                        <button class="btn btn-outline-info" id="calibrateSensors">
+                            <i class="fas fa-cog me-2"></i>Calibrate Sensors
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Thresholds -->
+            <div class="card settings-card">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Current Thresholds
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Noise Warning:</span>
+                            <strong id="currentNoiseWarning">70 dB</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Noise Danger:</span>
+                            <strong id="currentNoiseDanger">100 dB</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Light Warning:</span>
+                            <strong id="currentLightWarning">3000 lux</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Light Danger:</span>
+                            <strong id="currentLightDanger">8000 lux</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Motion Warning:</span>
+                            <strong id="currentMotionWarning">50 units</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Motion Danger:</span>
+                            <strong id="currentMotionDanger">80 units</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize slider values
+    updateSliderValue('noiseWarning', 'noiseWarningValue', ' dB');
+    updateSliderValue('noiseDanger', 'noiseDangerValue', ' dB');
+    updateSliderValue('lightWarning', 'lightWarningValue', ' lux');
+    updateSliderValue('lightDanger', 'lightDangerValue', ' lux');
+    updateSliderValue('motionWarning', 'motionWarningValue', ' units');
+    updateSliderValue('motionDanger', 'motionDangerValue', ' units');
+
+    // Add event listeners to all sliders
+    const sliders = document.querySelectorAll('.threshold-slider');
+    sliders.forEach(slider => {
+        const valueId = slider.id + 'Value';
+        const unit = valueId.includes('noise') ? ' dB' : 
+                    valueId.includes('light') ? ' lux' : ' units';
+        
+        slider.addEventListener('input', function() {
+            updateSliderValue(slider.id, valueId, unit);
+            updateCurrentThresholds();
+        });
+    });
+
+    // Save Settings button
+    document.getElementById('saveSettings').addEventListener('click', function() {
+        const settings = {
+            noise: {
+                warning: parseInt(document.getElementById('noiseWarning').value),
+                danger: parseInt(document.getElementById('noiseDanger').value)
+            },
+            light: {
+                warning: parseInt(document.getElementById('lightWarning').value),
+                danger: parseInt(document.getElementById('lightDanger').value)
+            },
+            motion: {
+                warning: parseInt(document.getElementById('motionWarning').value),
+                danger: parseInt(document.getElementById('motionDanger').value)
+            }
+        };
+
+        // Send settings to server
+        fetch('/api/sensor-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            showToast('Settings Saved', 'Sensor thresholds updated successfully', 'success');
+        })
+        .catch(error => {
+            console.error('Error saving settings:', error);
+            showToast('Error', 'Failed to save settings', 'error');
+        });
+    });
+
+    // Reset to Defaults button
+    document.getElementById('resetDefaults').addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset all thresholds to default values?')) {
+            document.getElementById('noiseWarning').value = 70;
+            document.getElementById('noiseDanger').value = 100;
+            document.getElementById('lightWarning').value = 3000;
+            document.getElementById('lightDanger').value = 8000;
+            document.getElementById('motionWarning').value = 50;
+            document.getElementById('motionDanger').value = 80;
+
+            // Update all displays
+            updateSliderValue('noiseWarning', 'noiseWarningValue', ' dB');
+            updateSliderValue('noiseDanger', 'noiseDangerValue', ' dB');
+            updateSliderValue('lightWarning', 'lightWarningValue', ' lux');
+            updateSliderValue('lightDanger', 'lightDangerValue', ' lux');
+            updateSliderValue('motionWarning', 'motionWarningValue', ' units');
+            updateSliderValue('motionDanger', 'motionDangerValue', ' units');
+            updateCurrentThresholds();
+
+            showToast('Defaults Restored', 'All thresholds reset to default values', 'info');
+        }
+    });
+
+    // Calibrate Sensors button
+    document.getElementById('calibrateSensors').addEventListener('click', function() {
+        showToast('Calibration Started', 'Sensor calibration in progress...', 'info');
+        
+        // Simulate calibration process
+        setTimeout(() => {
+            showToast('Calibration Complete', 'Sensors calibrated successfully', 'success');
+        }, 2000);
+    });
+
+    function updateSliderValue(sliderId, valueId, unit) {
+        const slider = document.getElementById(sliderId);
+        const valueDisplay = document.getElementById(valueId);
+        if (slider && valueDisplay) {
+            valueDisplay.textContent = slider.value + unit;
+        }
+    }
+
+    function updateCurrentThresholds() {
+        document.getElementById('currentNoiseWarning').textContent = document.getElementById('noiseWarning').value + ' dB';
+        document.getElementById('currentNoiseDanger').textContent = document.getElementById('noiseDanger').value + ' dB';
+        document.getElementById('currentLightWarning').textContent = document.getElementById('lightWarning').value + ' lux';
+        document.getElementById('currentLightDanger').textContent = document.getElementById('lightDanger').value + ' lux';
+        document.getElementById('currentMotionWarning').textContent = document.getElementById('motionWarning').value + ' units';
+        document.getElementById('currentMotionDanger').textContent = document.getElementById('motionDanger').value + ' units';
+    }
+
+    // Initialize current thresholds display
+    updateCurrentThresholds();
+});
+
+// Toast notification function
+function showToast(title, message, type = 'info') {
+    // Use your existing toast implementation
+    if (typeof window.showToast === 'function') {
+        window.showToast(message, type, title);
+    } else {
+        console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
+        // Fallback: use browser alert
+        alert(`${title}: ${message}`);
+    }
+}
+</script>
+{% endblock %}
