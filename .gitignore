@@ -1,7 +1,7 @@
 ﻿# Python
 __pycache__/
 *.py[cod]
-*.class
+*$py.class
 *.so
 .Python
 build/
@@ -101,6 +101,5 @@ uv.lock
 .local/
 
 # Development/test files
-src/
 test_*
 predict.py
