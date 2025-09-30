@@ -292,6 +292,34 @@ class EnhancedSensoryModel:
         
         return features
     
+    def get_safe_prediction(noise, light, motion):
+        """Provide fallback predictions when ML model fails"""
+        try:
+            # Simple threshold-based fallback
+            risk_score = 0.0
+            if noise > 80 or light > 5000 or motion > 60:
+                risk_score = 0.7
+            elif noise > 60 or light > 3000 or motion > 40:
+                risk_score = 0.4
+            elif noise > 40 or light > 1500 or motion > 20:
+                risk_score = 0.2
+                
+            return {
+                'probability': risk_score,
+                'prediction': 1 if risk_score > 0.5 else 0,
+                'confidence': 0.8,
+                'model_used': 'fallback_threshold',
+                'features_used': 3
+            }
+        except Exception as e:
+            return {
+                'probability': 0.1,
+                'prediction': 0,
+                'confidence': 0.5,
+                'model_used': 'emergency_fallback',
+                'error': str(e)
+            }
+
     def _fallback_prediction(self, sensor_data):
         """Fallback prediction using simple thresholds"""
         noise = sensor_data['noise']
