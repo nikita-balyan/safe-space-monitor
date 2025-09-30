@@ -1072,7 +1072,15 @@ def start_background_services():
 # Start background services when app starts
 start_background_services()
 
+# Add this at the VERY BOTTOM of your app.py file:
+
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 10000))
+    debug = os.environ.get("DEBUG", "False").lower() == "true"
+    
+    # Use 10000 as default port for Render
+    socketio.run(app, 
+                host="0.0.0.0", 
+                port=port, 
+                debug=debug, 
+                allow_unsafe_werkzeug=True)
