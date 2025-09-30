@@ -761,6 +761,7 @@ class SensorDashboard {
         // Destroy existing chart if it exists
         if (this.sensorChart) {
             this.sensorChart.destroy();
+            this.sensorChart = null;
         }
 
         try {
@@ -896,6 +897,7 @@ class SensorDashboard {
         // Destroy existing chart if it exists
         if (this.predictionChart) {
             this.predictionChart.destroy();
+            this.predictionChart = null;
         }
 
         try {
@@ -988,6 +990,7 @@ class SensorDashboard {
         // Destroy existing chart if it exists
         if (this.gaugeChart) {
             this.gaugeChart.destroy();
+            this.gaugeChart = null;
         }
 
         try {
