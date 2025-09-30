@@ -864,6 +864,42 @@ def register_fallback_routes():
             "model_loaded": model is not None,
             "enhanced_model_loaded": enhanced_model.model is not None
         })
+    
+@app.route('/api/activities/start', methods=['POST'])
+def start_activity_session():
+    try:
+        data = request.get_json()
+        activity_id = data.get('activity_id')
+        
+        # Create a session ID (in a real app, you'd store this in a database)
+        session_id = f"session_{int(datetime.now().timestamp())}"
+        
+        return jsonify({
+            "session_id": session_id,
+            "activity_id": activity_id,
+            "status": "started",
+            "started_at": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/activities/complete', methods=['POST'])
+def complete_activity_session():
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        activity_id = data.get('activity_id')
+        
+        # In a real app, you'd update the session in a database
+        return jsonify({
+            "session_id": session_id,
+            "activity_id": activity_id,
+            "status": "completed",
+            "completed_at": datetime.now().isoformat(),
+            "message": "Activity completed successfully"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/activities')
 def get_activities():
