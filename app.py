@@ -909,20 +909,6 @@ def start_background_services():
 start_background_services()
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    logger.info(f"ðŸš€ Starting Flask server with real-time features on port {port}")
-    logger.info("ðŸ“Š Dashboard: http://localhost:5000")
-    logger.info("ðŸ“Š Dashboard (alt): http://localhost:5000/dashboard")
-    logger.info("ðŸ‘¤ Profile: http://localhost:5000/profile")
-    logger.info("ðŸ§˜ Breathing Exercises: http://localhost:5000/breathing")
-    logger.info("âš™ï¸ Sensor Settings: http://localhost:5000/sensor-settings")
-    logger.info("ðŸ”Œ Real-time WebSocket: Active")
-    logger.info("âš¡ 1Hz Data Sampling: Enabled")
-    logger.info("ðŸŽ¯ Enhanced Features: Interactive Activities, Advanced AI, User Profiles")
-    
-    socketio.run(app, host="0.0.0.0", port=port, debug=True, allow_unsafe_werkzeug=True)
-
-if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
