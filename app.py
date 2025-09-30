@@ -865,9 +865,40 @@ def register_fallback_routes():
             "enhanced_model_loaded": enhanced_model.model is not None
         })
 
-@app.route('/activities')
-def activities():
-    return render_template('activities.html')
+@app.route('/api/activities')
+def get_activities():
+    try:
+        import json
+        import os
+        # Use absolute path for Railway
+        file_path = os.path.join(os.path.dirname(__file__), 'data', 'activities.json')
+        
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                activities_data = json.load(f)
+            return jsonify(activities_data)
+        else:
+            # Fallback data
+            return jsonify({
+                "activities": [
+                    {"id": 1, "name": "Deep Breathing", "type": "breathing", "duration": 5, "description": "Follow the breathing circle"},
+                    {"id": 2, "name": "Guided Meditation", "type": "meditation", "duration": 10, "description": "Listen to calming guidance"},
+                    {"id": 3, "name": "Calming Sounds", "type": "audio", "duration": 15, "description": "Nature sounds and white noise"}
+                ]
+            })
+    except Exception as e:
+        print(f"API Error: {e}")
+        return jsonify({"error": "Failed to load activities"}), 500
+
+@app.route('/api/activities/voice-options')
+def get_voice_options():
+    return jsonify({
+        "voices": [
+            {"id": 1, "name": "Calm Female", "language": "en-US"},
+            {"id": 2, "name": "Gentle Male", "language": "en-US"},
+            {"id": 3, "name": "Soothing Voice", "language": "en-GB"}
+        ]
+    })
 
 # Load models and engines on startup
 load_ml_model()
