@@ -1,14 +1,6 @@
 // Dashboard JavaScript for Safe Space Monitor with Real-time Socket.IO Integration
 // Enhanced with Interactive Activities, User Profiles, and Advanced Features
-// FIXED: Recursive showToast function and improved error handling
-
-const socket = io({
-  transports: ["websocket"],   // Force WebSocket only
-  upgrade: true,
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 2000
-});
+// FIXED: All chart initialization issues, socket conflicts, and error handling
 
 class SensorDashboard {
     constructor() {
@@ -29,7 +21,7 @@ class SensorDashboard {
         
         // Alert debouncing
         this.lastAlertTime = 0;
-        this.ALERT_DEBOUNCE_MS = 5000; // 5 seconds between alerts
+        this.ALERT_DEBOUNCE_MS = 5000;
         
         // Enhanced properties
         this.enhancedActivities = [];
@@ -49,6 +41,9 @@ class SensorDashboard {
             sensorReadings: [],
             predictions: []
         };
+
+        // Chart instances tracking
+        this.chartInstances = {};
     }
 
     async init() {
@@ -59,12 +54,8 @@ class SensorDashboard {
         // Wait for DOM to be fully ready
         await this.waitForDOM();
         
-        // Initialize Socket.IO after DOM is ready
-        if (typeof io !== 'undefined') {
-            this.socket = io();
-        } else {
-            console.warn('Socket.io not available - running in demo mode');
-        }
+        // Initialize Socket.IO safely
+        this.initializeSocket();
         
         // Clear any existing charts first
         this.destroyCharts();
@@ -95,10 +86,28 @@ class SensorDashboard {
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', resolve);
             } else {
-                // Small delay to ensure all elements are rendered
                 setTimeout(resolve, 100);
             }
         });
+    }
+
+    // FIXED: Safe socket initialization
+    initializeSocket() {
+        if (typeof io !== 'undefined') {
+            // Use global socket if it exists, otherwise create one
+            if (!window.globalSocket) {
+                window.globalSocket = io({
+                    transports: ["websocket"],
+                    upgrade: true,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 2000
+                });
+            }
+            this.socket = window.globalSocket;
+        } else {
+            console.warn('Socket.io not available - running in demo mode');
+        }
     }
 
     setupEventListeners() {
@@ -199,11 +208,7 @@ class SensorDashboard {
     // Enhanced Activity System
     setupActivitySystem() {
         console.log('🎯 Setting up activity system...');
-        
-        // Load enhanced activities
         this.loadEnhancedActivities();
-        
-        // Setup activity event listeners
         this.setupActivityListeners();
     }
 
@@ -295,7 +300,6 @@ class SensorDashboard {
             </div>
         `;
         
-        // Update start button
         const startBtn = document.getElementById('startActivityBtn');
         startBtn.onclick = () => this.startActivity(activity);
         
@@ -305,11 +309,9 @@ class SensorDashboard {
     startActivity(activity) {
         console.log('Starting activity:', activity.name);
         
-        // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('activityModal'));
         modal.hide();
         
-        // Show fullscreen activity
         this.showFullscreenActivity(activity);
     }
 
@@ -317,10 +319,7 @@ class SensorDashboard {
         const canvas = document.getElementById('breathingCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Show canvas
         canvas.style.display = 'block';
-        
-        // Set canvas size
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         
@@ -328,7 +327,6 @@ class SensorDashboard {
         let stepStartTime = Date.now();
         let isRunning = true;
         
-        // Animation function
         const animate = () => {
             if (!isRunning) return;
             
@@ -337,23 +335,17 @@ class SensorDashboard {
             const currentInstruction = activity.instructions[currentStep];
             const stepProgress = stepElapsed / currentInstruction.duration;
             
-            // Clear canvas
             ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw activity visualization based on type
             this.drawActivityVisualization(ctx, activity, currentInstruction, stepProgress);
-            
-            // Draw instructions
             this.drawActivityInstructions(ctx, currentInstruction, stepProgress, stepElapsed, currentInstruction.duration);
             
-            // Check if step is complete
             if (stepElapsed >= currentInstruction.duration) {
                 currentStep++;
                 stepStartTime = currentTime;
                 
                 if (currentStep >= activity.instructions.length) {
-                    // Activity complete
                     this.completeActivity(activity);
                     return;
                 }
@@ -362,7 +354,6 @@ class SensorDashboard {
             requestAnimationFrame(animate);
         };
         
-        // Start animation
         animate();
     }
 
@@ -378,7 +369,6 @@ class SensorDashboard {
         switch (activity.animation) {
             case 'circle_breathe':
             case 'ball_breathe':
-                // Breathing circle animation
                 let size;
                 if (instruction.action === 'inhale') {
                     size = maxSize * 0.3 + (maxSize * 0.7 * progress);
@@ -394,7 +384,6 @@ class SensorDashboard {
                 break;
                 
             case 'box_breathe':
-                // Box breathing animation
                 const boxSize = maxSize * 0.8;
                 const pulse = Math.sin(progress * Math.PI * 2) * 10;
                 
@@ -402,14 +391,12 @@ class SensorDashboard {
                 ctx.rect(centerX - boxSize/2, centerY - boxSize/2, boxSize, boxSize);
                 ctx.stroke();
                 
-                // Animated corner
                 ctx.beginPath();
                 ctx.arc(centerX + boxSize/2 + pulse, centerY - boxSize/2 - pulse, 10, 0, Math.PI * 2);
                 ctx.fill();
                 break;
                 
             case 'counting':
-                // Counting animation
                 const numberSize = maxSize * 0.5;
                 ctx.font = `bold ${numberSize}px Arial`;
                 ctx.textAlign = 'center';
@@ -423,7 +410,6 @@ class SensorDashboard {
                 break;
                 
             default:
-                // Default circle
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, maxSize * 0.5, 0, Math.PI * 2);
                 ctx.stroke();
@@ -439,10 +425,8 @@ class SensorDashboard {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Current instruction
         ctx.fillText(instruction.text, centerX, centerY);
         
-        // Progress bar
         const barWidth = 400;
         const barHeight = 8;
         const barX = centerX - barWidth / 2;
@@ -454,7 +438,6 @@ class SensorDashboard {
         ctx.fillStyle = this.currentActivity.color;
         ctx.fillRect(barX, barY, barWidth * progress, barHeight);
         
-        // Timer
         ctx.font = '18px Arial';
         ctx.fillStyle = 'white';
         ctx.fillText(`${Math.ceil(total - elapsed)}s`, centerX, barY + 30);
@@ -464,7 +447,6 @@ class SensorDashboard {
         const canvas = document.getElementById('breathingCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Show completion screen
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
@@ -478,10 +460,8 @@ class SensorDashboard {
         ctx.fillText('You completed the activity', canvas.width / 2, canvas.height / 2 + 20);
         ctx.fillText('Click anywhere to continue', canvas.width / 2, canvas.height / 2 + 70);
         
-        // Record activity completion
         this.recordActivityCompletion(activity.id);
         
-        // Set timeout to auto-close
         setTimeout(() => {
             canvas.style.display = 'none';
             this.showToast('Activity completed', 'Great job completing the calming activity!', 'success');
@@ -501,7 +481,6 @@ class SensorDashboard {
                 })
             });
             
-            // Also record in user profile
             await this.recordActivityCompletionProfile(activityId);
         } catch (error) {
             console.error('Failed to record activity completion:', error);
@@ -537,18 +516,13 @@ class SensorDashboard {
     }
 
     setupActivityListeners() {
-        // Additional activity-specific listeners can be added here
         console.log('✅ Activity listeners setup complete');
     }
 
     // Enhanced User Profile System
     setupUserProfiles() {
         console.log('👤 Setting up user profiles...');
-        
-        // Check for existing profile
         this.loadUserProfile();
-        
-        // Setup profile modal (could be extended)
         this.setupProfileModal();
     }
 
@@ -557,17 +531,12 @@ class SensorDashboard {
             const response = await fetch('/api/profile/enhanced?user_id=default');
             if (response.ok) {
                 const data = await response.json();
-                // Handle both profile structures safely
                 this.userProfile = data.profile || data;
-                
                 console.log('User profile loaded:', this.userProfile);
-                
-                // Apply user settings with safety checks
                 this.applyUserSettings();
             }
         } catch (error) {
             console.error('Failed to load user profile:', error);
-            // Use default profile with proper structure
             this.userProfile = {
                 age: 8,
                 name: 'Alex',
@@ -603,19 +572,16 @@ class SensorDashboard {
         
         const settings = this.userProfile.settings;
         
-        // Apply animation speed with safety checks
         if (settings.animation_speed === 'slow') {
             document.documentElement.style.setProperty('--animation-duration', '0.8s');
         } else if (settings.animation_speed === 'fast') {
             document.documentElement.style.setProperty('--animation-duration', '0.2s');
         }
         
-        // Apply color scheme with safety checks
         if (settings.color_scheme === 'high-contrast') {
             document.body.classList.add('high-contrast');
         }
         
-        // Apply reduced motion with safety checks
         if (settings.reduced_motion) {
             document.body.classList.add('reduced-motion');
         }
@@ -624,8 +590,6 @@ class SensorDashboard {
     }
 
     setupProfileModal() {
-        // This would set up a profile editing modal
-        // For now, we'll use the existing profile system
         console.log('✅ Profile modal setup complete');
     }
 
@@ -652,7 +616,7 @@ class SensorDashboard {
         }
     }
 
-    // Fixed Socket.IO setup with error handling
+    // FIXED: Socket.IO setup with proper error handling
     setupSocketListeners() {
         console.log('🔌 Setting up Socket.IO listeners...');
         
@@ -662,7 +626,6 @@ class SensorDashboard {
             return;
         }
 
-        // Real-time sensor updates
         this.socket.on('sensor_update', (data) => {
             try {
                 console.log('📡 Real-time update received:', data);
@@ -672,7 +635,6 @@ class SensorDashboard {
             }
         });
 
-        // Real-time alerts with debouncing
         this.socket.on('alert', (alertData) => {
             try {
                 console.log('🚨 Alert received:', alertData);
@@ -682,7 +644,6 @@ class SensorDashboard {
             }
         });
 
-        // Connection status
         this.socket.on('connect', () => {
             this.isOnline = true;
             this.showToast('Connected', 'Real-time data streaming active', 'success');
@@ -702,7 +663,6 @@ class SensorDashboard {
         });
     }
 
-    // Demo mode for when Socket.IO is not available
     startDemoMode() {
         console.log('🎭 Starting demo mode with simulated data');
         
@@ -721,7 +681,6 @@ class SensorDashboard {
             
             this.handleRealTimeUpdate(mockData);
             
-            // Occasionally trigger alerts
             if (Math.random() > 0.8) {
                 const alertData = {
                     message: 'Demo: High sensory overload risk detected!',
@@ -747,35 +706,25 @@ class SensorDashboard {
     handleRealTimeUpdate(data) {
         this.readingsCount++;
         
-        // Update sensor displays
         this.updateSensorDisplays(data.sensor_data);
         this.updateRiskDisplay(data.prediction, data.sensor_data);
         
-        // Store data for charts
         this.addRealTimeData(data);
-        
-        // Update charts
         this.updateRealTimeCharts();
         
-        // Check for overload and get recommendations
         this.checkForOverloadAndRecommend(data.sensor_data, data.prediction);
-        
-        // Update system info
         this.updateSystemInfo();
     }
 
-    // FIXED: Alert handling with debouncing and error protection
     handleRealTimeAlert(alertData) {
         try {
             console.log('🚨 Alert received:', alertData);
             
-            // Check if alertData exists and has the required properties
             if (!alertData || typeof alertData !== 'object') {
                 console.warn('Invalid alert data received');
                 return;
             }
 
-            // Debouncing: Prevent multiple rapid alerts
             const now = Date.now();
             if (now - this.lastAlertTime < this.ALERT_DEBOUNCE_MS) {
                 console.log('Alert suppressed - too soon after previous alert');
@@ -789,11 +738,9 @@ class SensorDashboard {
 
             this.addAlert(message, level, timestamp);
             
-            // Show immediate notification with safe toast
             this.showToast('Alert Triggered', message, level === 'high' ? 'error' : 'warning');
         } catch (error) {
             console.error('❌ Error handling alert:', error);
-            // Fallback to simple console log
             console.log('ALERT FALLBACK:', alertData?.message || 'Unknown alert');
         }
     }
@@ -803,7 +750,6 @@ class SensorDashboard {
         
         this.currentView = view;
         
-        // Update button states
         const childViewBtn = document.getElementById('childViewBtn');
         const caregiverViewBtn = document.getElementById('caregiverViewBtn');
         
@@ -812,7 +758,6 @@ class SensorDashboard {
             caregiverViewBtn.classList.toggle('active', view === 'caregiver');
         }
         
-        // Update view visibility
         const childView = document.getElementById('childView');
         const caregiverView = document.getElementById('caregiverView');
         
@@ -821,17 +766,20 @@ class SensorDashboard {
             caregiverView.classList.toggle('d-none', view !== 'caregiver');
         }
         
-        // Update URL without reload
         const url = new URL(window.location);
         url.searchParams.set('view', view);
         window.history.replaceState({}, '', url);
     }
 
+    // FIXED: Chart initialization with proper cleanup
     async setupCharts() {
         console.log('📊 Setting up charts...');
         
         // Additional delay to ensure DOM is ready
         await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Clear any existing charts first
+        this.destroyCharts();
         
         const sensorChartSuccess = await this.setupSensorChart();
         const predictionChartSuccess = await this.setupPredictionChart();
@@ -844,36 +792,27 @@ class SensorDashboard {
         });
     }
 
+    // FIXED: Proper chart destruction
     destroyCharts() {
         console.log('🗑️ Destroying existing charts...');
         
-        // Destroy all existing charts
-        if (this.sensorChart) {
+        // Destroy all chart instances
+        Object.values(this.chartInstances).forEach(chart => {
             try {
-                this.sensorChart.destroy();
+                if (chart && typeof chart.destroy === 'function') {
+                    chart.destroy();
+                }
             } catch (e) {
-                console.log('Error destroying sensor chart:', e);
+                console.log('Error destroying chart:', e);
             }
-            this.sensorChart = null;
-        }
-        if (this.predictionChart) {
-            try {
-                this.predictionChart.destroy();
-            } catch (e) {
-                console.log('Error destroying prediction chart:', e);
-            }
-            this.predictionChart = null;
-        }
-        if (this.gaugeChart) {
-            try {
-                this.gaugeChart.destroy();
-            } catch (e) {
-                console.log('Error destroying gauge chart:', e);
-            }
-            this.gaugeChart = null;
-        }
+        });
         
-        // Clear any Chart.js instances from the global registry
+        this.chartInstances = {};
+        this.sensorChart = null;
+        this.predictionChart = null;
+        this.gaugeChart = null;
+        
+        // Clear Chart.js registry
         if (typeof Chart !== 'undefined' && Chart.instances) {
             Object.keys(Chart.instances).forEach(key => {
                 try {
@@ -885,33 +824,20 @@ class SensorDashboard {
         }
     }
 
+    // FIXED: Safe chart initialization
     async setupSensorChart() {
-        // Try multiple selectors for the chart canvas
-        const selectors = ['#sensorChart', 'canvas[data-chart="sensor"]', 'canvas'];
-        let ctx = null;
-        
-        for (const selector of selectors) {
-            const element = document.querySelector(selector);
-            if (element && element.getContext) {
-                ctx = element.getContext('2d');
-                if (ctx) {
-                    console.log(`✅ Found chart canvas with selector: ${selector}`);
-                    break;
-                }
-            }
-        }
-        
-        if (!ctx) {
-            console.error('❌ Sensor chart canvas not found! Available canvases:');
-            document.querySelectorAll('canvas').forEach((canvas, index) => {
-                console.log(`  Canvas ${index}:`, canvas.id, canvas.className);
-            });
+        const canvas = document.getElementById('sensorChart');
+        if (!canvas) {
+            console.log('ℹ️ Sensor chart canvas not found, skipping...');
             return false;
         }
 
         console.log('📈 Initializing sensor chart...');
 
         try {
+            // Clear existing context
+            const ctx = canvas.getContext('2d');
+            
             this.sensorChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1016,6 +942,8 @@ class SensorDashboard {
                     }
                 }
             });
+            
+            this.chartInstances.sensorChart = this.sensorChart;
             console.log('✅ Sensor chart initialized successfully');
             return true;
         } catch (error) {
@@ -1025,26 +953,17 @@ class SensorDashboard {
     }
 
     async setupPredictionChart() {
-        // Try multiple selectors
-        const selectors = ['#predictionChart', 'canvas[data-chart="prediction"]'];
-        let ctx = null;
-        
-        for (const selector of selectors) {
-            const element = document.querySelector(selector);
-            if (element && element.getContext) {
-                ctx = element.getContext('2d');
-                if (ctx) break;
-            }
-        }
-        
-        if (!ctx) {
-            console.log('ℹ️ Prediction chart not found in template, skipping...');
+        const canvas = document.getElementById('predictionChart');
+        if (!canvas) {
+            console.log('ℹ️ Prediction chart canvas not found, skipping...');
             return false;
         }
 
         console.log('📊 Initializing prediction chart...');
 
         try {
+            const ctx = canvas.getContext('2d');
+            
             this.predictionChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1106,6 +1025,8 @@ class SensorDashboard {
                     }
                 }
             });
+            
+            this.chartInstances.predictionChart = this.predictionChart;
             console.log('✅ Prediction chart initialized successfully');
             return true;
         } catch (error) {
@@ -1115,19 +1036,8 @@ class SensorDashboard {
     }
 
     async setupGaugeChart() {
-        // Try multiple selectors
-        const selectors = ['#predictionGauge', 'canvas[data-chart="gauge"]'];
-        let ctx = null;
-        
-        for (const selector of selectors) {
-            const element = document.querySelector(selector);
-            if (element && element.getContext) {
-                ctx = element.getContext('2d');
-                if (ctx) break;
-            }
-        }
-        
-        if (!ctx) {
+        const canvas = document.getElementById('predictionGauge');
+        if (!canvas) {
             console.log('ℹ️ Gauge chart canvas not found, skipping...');
             return false;
         }
@@ -1135,14 +1045,16 @@ class SensorDashboard {
         console.log('🎯 Initializing gauge chart...');
 
         try {
+            const ctx = canvas.getContext('2d');
+            
             this.gaugeChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     datasets: [{
                         data: [0, 100],
                         backgroundColor: [
-                            '#28a745', // Green
-                            '#e9ecef'  // Gray background
+                            '#28a745',
+                            '#e9ecef'
                         ],
                         borderWidth: 0,
                         circumference: 180,
@@ -1167,6 +1079,8 @@ class SensorDashboard {
                     }
                 }
             });
+            
+            this.chartInstances.gaugeChart = this.gaugeChart;
             console.log('✅ Gauge chart initialized successfully');
             return true;
         } catch (error) {
@@ -1178,12 +1092,10 @@ class SensorDashboard {
     addRealTimeData(data) {
         const timestamp = new Date().toLocaleTimeString();
         
-        // Add to data buffers
         this.realTimeData.timestamps.push(timestamp);
         this.realTimeData.sensorReadings.push(data.sensor_data);
         this.realTimeData.predictions.push(data.prediction);
         
-        // Keep only last 20 data points for performance
         if (this.realTimeData.timestamps.length > 20) {
             this.realTimeData.timestamps.shift();
             this.realTimeData.sensorReadings.shift();
@@ -1197,14 +1109,8 @@ class SensorDashboard {
         });
     }
 
-    // Fixed chart update function
+    // FIXED: Chart updates with safety checks
     updateRealTimeCharts() {
-        // Check if charts are ready
-        if (!this.sensorChart) {
-            console.log('⚠️ Sensor chart not ready for update');
-            return;
-        }
-        
         const timestamps = this.realTimeData.timestamps;
         const sensorReadings = this.realTimeData.sensorReadings;
         const predictions = this.realTimeData.predictions;
@@ -1218,33 +1124,34 @@ class SensorDashboard {
         
         try {
             // Update sensor chart
-            this.sensorChart.data.labels = timestamps;
-            this.sensorChart.data.datasets[0].data = sensorReadings.map(r => r.noise);
-            this.sensorChart.data.datasets[1].data = sensorReadings.map(r => r.light);
-            this.sensorChart.data.datasets[2].data = sensorReadings.map(r => r.motion);
-            this.sensorChart.update('none');
+            if (this.sensorChart) {
+                this.sensorChart.data.labels = timestamps;
+                this.sensorChart.data.datasets[0].data = sensorReadings.map(r => r.noise);
+                this.sensorChart.data.datasets[1].data = sensorReadings.map(r => r.light);
+                this.sensorChart.data.datasets[2].data = sensorReadings.map(r => r.motion);
+                this.sensorChart.update('none');
+            }
             
-            // Update prediction chart if it exists
+            // Update prediction chart
             if (this.predictionChart) {
                 this.predictionChart.data.labels = timestamps;
                 this.predictionChart.data.datasets[0].data = predictions;
                 this.predictionChart.update('none');
             }
             
-            // Update gauge chart if it exists
+            // Update gauge chart
             if (this.gaugeChart && predictions.length > 0) {
                 const currentPrediction = predictions[predictions.length - 1];
                 const probabilityPercent = currentPrediction * 100;
                 this.gaugeChart.data.datasets[0].data = [probabilityPercent, 100 - probabilityPercent];
                 
-                // Update gauge color based on risk level
                 let gaugeColor;
                 if (currentPrediction > 0.7) {
-                    gaugeColor = '#dc3545'; // Red for high risk
+                    gaugeColor = '#dc3545';
                 } else if (currentPrediction > 0.4) {
-                    gaugeColor = '#ffc107'; // Yellow for medium risk
+                    gaugeColor = '#ffc107';
                 } else {
-                    gaugeColor = '#28a745'; // Green for low risk
+                    gaugeColor = '#28a745';
                 }
                 
                 this.gaugeChart.data.datasets[0].backgroundColor = [gaugeColor, '#e9ecef'];
@@ -1260,22 +1167,18 @@ class SensorDashboard {
     updateSensorDisplays(sensorData) {
         console.log('🔧 Updating sensor displays:', sensorData);
         
-        // Update main sensor displays - with fallbacks for missing elements
         this.updateElementText('noiseValue', Math.round(sensorData.noise));
         this.updateElementText('lightValue', Math.round(sensorData.light));
         this.updateElementText('motionValue', Math.round(sensorData.motion));
         
-        // Update child view displays
         this.updateElementText('childNoiseValue', Math.round(sensorData.noise));
         this.updateElementText('childLightValue', Math.round(sensorData.light));
         this.updateElementText('childMotionValue', Math.round(sensorData.motion));
         
-        // Update progress bars and status
         this.updateSensorWidget('noise', sensorData.noise, this.thresholds.noise, this.thresholds.noise.max);
         this.updateSensorWidget('light', sensorData.light, this.thresholds.light, this.thresholds.light.max);
         this.updateSensorWidget('motion', sensorData.motion, this.thresholds.motion, this.thresholds.motion.max);
         
-        // Update child sensor status
         this.updateChildSensorCard('childNoiseStatus', sensorData.noise, this.thresholds.noise.warning, this.thresholds.noise.danger);
         this.updateChildSensorCard('childLightStatus', sensorData.light, this.thresholds.light.warning, this.thresholds.light.danger);
         this.updateChildSensorCard('childMotionStatus', sensorData.motion, this.thresholds.motion.warning, this.thresholds.motion.danger);
@@ -1286,7 +1189,6 @@ class SensorDashboard {
         if (element) {
             element.textContent = value;
         } else {
-            // Don't log missing elements that are optional
             const optionalElements = ['riskValue', 'predictionValue', 'gaugePercentage'];
             if (!optionalElements.includes(elementId)) {
                 console.log(`Element not found: ${elementId}`);
@@ -1297,11 +1199,9 @@ class SensorDashboard {
     updateRiskDisplay(probability, sensorData) {
         console.log('📈 Updating risk display:', probability);
         
-        // Update risk value (if element exists)
         this.updateElementText('riskValue', (probability * 100).toFixed(1) + '%');
         this.updateElementText('gaugePercentage', (probability * 100).toFixed(0) + '%');
         
-        // Update prediction status
         const predictionStatus = document.getElementById('predictionStatus');
         if (predictionStatus) {
             if (probability > 0.7) {
@@ -1316,7 +1216,6 @@ class SensorDashboard {
             }
         }
         
-        // Update overload status badge
         const overloadStatus = document.getElementById('overloadStatus');
         if (overloadStatus) {
             if (probability > 0.7) {
@@ -1331,7 +1230,6 @@ class SensorDashboard {
             }
         }
         
-        // Update child view status
         this.updateChildStatus(probability, sensorData);
     }
 
@@ -1347,12 +1245,10 @@ class SensorDashboard {
             return;
         }
         
-        // Add animation classes
         statusCard.classList.add('fade-in');
         emojiEl.classList.add('emoji-transition');
         
         if (probability > 0.7) {
-            // High risk
             statusCard.className = 'child-view-card text-center p-5 rounded-4 shadow-lg status-danger fade-in';
             emojiEl.textContent = '😰';
             textEl.textContent = 'Too Much!';
@@ -1366,7 +1262,6 @@ class SensorDashboard {
                 suggestionEl.style.display = 'block';
             }
         } else if (probability > 0.4) {
-            // Medium risk
             statusCard.className = 'child-view-card text-center p-5 rounded-4 shadow-lg status-warning fade-in';
             emojiEl.textContent = '😟';
             textEl.textContent = 'A Bit Much';
@@ -1380,7 +1275,6 @@ class SensorDashboard {
                 suggestionEl.style.display = 'block';
             }
         } else {
-            // Low risk
             statusCard.className = 'child-view-card text-center p-5 rounded-4 shadow-lg status-good fade-in';
             emojiEl.textContent = '😊';
             textEl.textContent = 'All Good!';
@@ -1391,7 +1285,6 @@ class SensorDashboard {
             }
         }
         
-        // Remove animation classes after animation completes
         setTimeout(() => {
             statusCard.classList.remove('fade-in');
             emojiEl.classList.remove('emoji-transition');
@@ -1405,7 +1298,6 @@ class SensorDashboard {
             const percentage = Math.min((value / maxValue) * 100, 100);
             progressEl.style.width = `${percentage}%`;
             
-            // Update color based on thresholds
             if (value > thresholds.danger) {
                 progressEl.className = 'progress-bar bg-danger';
             } else if (value > thresholds.warning) {
@@ -1566,7 +1458,6 @@ class SensorDashboard {
             id: Date.now() 
         };
         
-        // Avoid duplicate alerts
         const isDuplicate = this.alerts.some(existing => 
             existing.message === message && 
             Date.now() - existing.id < 5000
@@ -1575,7 +1466,7 @@ class SensorDashboard {
         if (isDuplicate) return;
         
         this.alerts.unshift(alert);
-        this.alerts = this.alerts.slice(0, 10); // Keep only last 10 alerts
+        this.alerts = this.alerts.slice(0, 10);
         
         this.renderAlerts();
         this.updateAlertsCount();
@@ -1616,7 +1507,6 @@ class SensorDashboard {
         const strategyIndex = strategyCard.dataset.recommendationIndex;
         const wasHelpful = button.dataset.helpful === 'true';
         
-        // Visual feedback
         if (wasHelpful) {
             button.classList.remove('btn-outline-success');
             button.classList.add('btn-success');
@@ -1625,15 +1515,12 @@ class SensorDashboard {
             button.classList.add('btn-danger');
         }
         
-        // Disable both buttons
         strategyCard.querySelectorAll('.feedback-btn').forEach(btn => {
             btn.disabled = true;
         });
         
-        // Record feedback
         await this.recordFeedback(strategyIndex, wasHelpful);
         
-        // Record in user profile
         if (this.currentOverloadType) {
             await this.recordStrategyFeedback(`strategy_${strategyIndex}`, this.currentOverloadType, wasHelpful);
         }
@@ -1646,13 +1533,11 @@ class SensorDashboard {
         const strategyCard = button.closest('.strategy-card');
         const strategyIndex = strategyCard.dataset.recommendationIndex;
         
-        // Visual feedback
         button.classList.remove('btn-primary');
         button.classList.add('btn-success');
         button.innerHTML = '<i class="fas fa-check me-1"></i> Applied';
         button.disabled = true;
         
-        // Send feedback
         await fetch('/api/feedback', {
             method: 'POST',
             headers: {
@@ -1688,28 +1573,23 @@ class SensorDashboard {
         }
     }
 
-    // FIXED: Safe showToast function without recursion
+    // FIXED: Safe toast function
     showToast(title, message, type = 'info') {
         try {
-            // Check if a global showToast function exists and use it
             if (typeof window.showToast === 'function') {
                 window.showToast(message, type, title);
                 return;
             }
             
-            // Fallback: Create a simple toast if no global function exists
             this.createSimpleToast(title, message, type);
         } catch (error) {
             console.error('Error showing toast:', error);
-            // Ultimate fallback: console log
             console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
         }
     }
 
-    // Safe fallback toast implementation
     createSimpleToast(title, message, type = 'info') {
         try {
-            // Create toast container if it doesn't exist
             let toastContainer = document.getElementById('dashboard-toast-container');
             if (!toastContainer) {
                 toastContainer = document.createElement('div');
@@ -1724,7 +1604,6 @@ class SensorDashboard {
                 document.body.appendChild(toastContainer);
             }
 
-            // Create toast element
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
             toast.style.cssText = `
@@ -1749,17 +1628,14 @@ class SensorDashboard {
                 </div>
             `;
 
-            // Add to container
             toastContainer.appendChild(toast);
 
-            // Auto remove after duration
             setTimeout(() => {
                 if (toast.parentElement) {
                     toast.remove();
                 }
             }, 5000);
 
-            // Add slide-in animation if not already defined
             if (!document.getElementById('dashboard-toast-animations')) {
                 const style = document.createElement('style');
                 style.id = 'dashboard-toast-animations';
@@ -1774,7 +1650,6 @@ class SensorDashboard {
 
         } catch (error) {
             console.error('Error creating fallback toast:', error);
-            // Final fallback
             console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
         }
     }
@@ -1831,14 +1706,12 @@ class SensorDashboard {
         try {
             console.log('📥 Loading initial data...');
             
-            // Load current data
             const response = await fetch('/api/current');
             if (response.ok) {
                 const data = await response.json();
                 this.handleRealTimeUpdate(data);
             }
             
-            // Load historical data for charts
             const historyResponse = await fetch('/api/history');
             if (historyResponse.ok) {
                 const historyData = await historyResponse.json();
@@ -1860,7 +1733,6 @@ class SensorDashboard {
         
         console.log('Initializing charts with historical data:', historyData);
         
-        // Initialize real-time data buffers with historical data
         this.realTimeData.timestamps = historyData.sensor_readings.map(r => 
             new Date(r.timestamp).toLocaleTimeString()
         ).slice(-20);
@@ -1873,7 +1745,6 @@ class SensorDashboard {
 
     async exportData() {
         try {
-            // For now, export current real-time data
             const dataStr = JSON.stringify(this.realTimeData, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = window.URL.createObjectURL(blob);
@@ -1911,7 +1782,6 @@ class SensorDashboard {
             this.socket.disconnect();
         }
         
-        // Clear activity timer
         if (this.activityTimer) {
             clearTimeout(this.activityTimer);
         }
@@ -1920,20 +1790,27 @@ class SensorDashboard {
     }
 }
 
-// Initialize dashboard
+// FIXED: Safe initialization function
 async function initializeDashboard() {
     console.log('🚀 Starting dashboard initialization...');
     
     // Clean up any existing dashboard instance
     if (window.sensorDashboard) {
-        window.sensorDashboard.destroy();
+        try {
+            window.sensorDashboard.destroy();
+        } catch (error) {
+            console.log('Error cleaning up previous dashboard:', error);
+        }
     }
     
     // Create new dashboard instance
-    window.sensorDashboard = new SensorDashboard();
-    await window.sensorDashboard.init();
-    
-    console.log('🎉 Dashboard initialization complete!');
+    try {
+        window.sensorDashboard = new SensorDashboard();
+        await window.sensorDashboard.init();
+        console.log('🎉 Dashboard initialization complete!');
+    } catch (error) {
+        console.error('❌ Dashboard initialization failed:', error);
+    }
 }
 
 // Export for global access

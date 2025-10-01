@@ -119,13 +119,21 @@ else:
     ]
     print(f"🌐 CORS set for production: {socketio_config['cors_allowed_origins']}")
 
+# Socket.IO Configuration - Safe for Python 3.13
+async_mode = 'threading'
+print("🔧 Using threading mode for WebSocket support")
+
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="eventlet",   # use eventlet for production WebSockets
+    async_mode=async_mode,
+    logger=DEBUG,
+    engineio_logger=DEBUG,
     ping_timeout=60,
     ping_interval=25
 )
+
+print("✅ Socket.IO initialized successfully")
 
 # Global variables for model and configuration
 model = None
