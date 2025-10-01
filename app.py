@@ -119,7 +119,7 @@ else:
     ]
     print(f"🌐 CORS set for production: {socketio_config['cors_allowed_origins']}")
 
-# Socket.IO Configuration - Safe for Python 3.13
+# Socket.IO Configuration - Use threading (built into Python)
 async_mode = 'threading'
 print("🔧 Using threading mode for WebSocket support")
 
