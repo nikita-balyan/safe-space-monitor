@@ -3,9 +3,9 @@
 // FIXED: Recursive showToast function and improved error handling
 
 const socket = io({
-  transports: ["websocket"],   // 👈 force WebSocket
-  upgrade: true,               // 👈 ensure upgrade attempt
-  reconnection: true,          // auto reconnect
+  transports: ["websocket"],   // Force WebSocket only
+  upgrade: true,
+  reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 2000
 });

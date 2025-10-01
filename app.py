@@ -122,7 +122,7 @@ else:
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="eventlet",   # 👈 use eventlet
+    async_mode="eventlet",   # use eventlet for production WebSockets
     ping_timeout=60,
     ping_interval=25
 )
