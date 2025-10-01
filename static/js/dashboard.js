@@ -1,5 +1,7 @@
 // Dashboard JavaScript for Safe Space Monitor with Real-time Socket.IO Integration
 // Enhanced with Interactive Activities, User Profiles, and Advanced Features
+// FIXED: Recursive showToast function and improved error handling
+
 class SensorDashboard {
     constructor() {
         this.currentView = 'caregiver';
@@ -15,7 +17,11 @@ class SensorDashboard {
         this.recommendationCooldown = 30000;
         this.currentOverloadType = null;
         this.isInitialized = false;
-        this.socket = null; // Will be initialized after DOM ready
+        this.socket = null;
+        
+        // Alert debouncing
+        this.lastAlertTime = 0;
+        this.ALERT_DEBOUNCE_MS = 5000; // 5 seconds between alerts
         
         // Enhanced properties
         this.enhancedActivities = [];
@@ -658,7 +664,7 @@ class SensorDashboard {
             }
         });
 
-        // Real-time alerts
+        // Real-time alerts with debouncing
         this.socket.on('alert', (alertData) => {
             try {
                 console.log('🚨 Alert received:', alertData);
@@ -750,7 +756,7 @@ class SensorDashboard {
         this.updateSystemInfo();
     }
 
-    // Fixed alert handling
+    // FIXED: Alert handling with debouncing and error protection
     handleRealTimeAlert(alertData) {
         try {
             console.log('🚨 Alert received:', alertData);
@@ -761,16 +767,26 @@ class SensorDashboard {
                 return;
             }
 
+            // Debouncing: Prevent multiple rapid alerts
+            const now = Date.now();
+            if (now - this.lastAlertTime < this.ALERT_DEBOUNCE_MS) {
+                console.log('Alert suppressed - too soon after previous alert');
+                return;
+            }
+            this.lastAlertTime = now;
+
             const message = alertData.message || 'Alert received';
             const level = alertData.level || 'info';
             const timestamp = alertData.timestamp || new Date().toISOString();
 
             this.addAlert(message, level, timestamp);
             
-            // Show immediate notification
+            // Show immediate notification with safe toast
             this.showToast('Alert Triggered', message, level === 'high' ? 'error' : 'warning');
         } catch (error) {
             console.error('❌ Error handling alert:', error);
+            // Fallback to simple console log
+            console.log('ALERT FALLBACK:', alertData?.message || 'Unknown alert');
         }
     }
 
@@ -1664,6 +1680,97 @@ class SensorDashboard {
         }
     }
 
+    // FIXED: Safe showToast function without recursion
+    showToast(title, message, type = 'info') {
+        try {
+            // Check if a global showToast function exists and use it
+            if (typeof window.showToast === 'function') {
+                window.showToast(message, type, title);
+                return;
+            }
+            
+            // Fallback: Create a simple toast if no global function exists
+            this.createSimpleToast(title, message, type);
+        } catch (error) {
+            console.error('Error showing toast:', error);
+            // Ultimate fallback: console log
+            console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
+        }
+    }
+
+    // Safe fallback toast implementation
+    createSimpleToast(title, message, type = 'info') {
+        try {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('dashboard-toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'dashboard-toast-container';
+                toastContainer.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    max-width: 400px;
+                `;
+                document.body.appendChild(toastContainer);
+            }
+
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.style.cssText = `
+                background: ${type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : type === 'success' ? '#4caf50' : '#2196f3'};
+                color: white;
+                padding: 12px 16px;
+                margin-bottom: 10px;
+                border-radius: 4px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                animation: slideInRight 0.3s ease-out;
+                cursor: pointer;
+                max-width: 400px;
+            `;
+            
+            toast.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px;">${title}</strong>
+                        <span style="font-size: 0.9em; opacity: 0.9;">${message}</span>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; font-size: 16px; cursor: pointer; margin-left: 10px;">×</button>
+                </div>
+            `;
+
+            // Add to container
+            toastContainer.appendChild(toast);
+
+            // Auto remove after duration
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+
+            // Add slide-in animation if not already defined
+            if (!document.getElementById('dashboard-toast-animations')) {
+                const style = document.createElement('style');
+                style.id = 'dashboard-toast-animations';
+                style.textContent = `
+                    @keyframes slideInRight {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+        } catch (error) {
+            console.error('Error creating fallback toast:', error);
+            // Final fallback
+            console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
+        }
+    }
+
     updateSystemInfo() {
         const uptimeEl = document.getElementById('uptimeValue');
         const readingsEl = document.getElementById('readingsCountValue');
@@ -1754,14 +1861,6 @@ class SensorDashboard {
         this.realTimeData.predictions = historyData.predictions.slice(-20).map(p => p.probability);
         
         this.updateRealTimeCharts();
-    }
-
-    showToast(title, message, type = 'info') {
-        if (typeof window.showToast === 'function') {
-            window.showToast(message, type, title);
-        } else {
-            console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
-        }
     }
 
     async exportData() {

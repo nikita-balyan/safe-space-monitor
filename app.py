@@ -1,11 +1,14 @@
-﻿#app.py
-"""
+﻿"""
 Flask application factory and configuration with Real-Time Features
 Enhanced with Interactive Calming Activities, Advanced AI Model, and User Profiles
 Integrated with separate routes.py for better organization
+Optimized for cross-platform deployment (Windows + Render)
+FIXED: Model calibration, alert spam, and memory optimization
 """
 
 import os
+import gc
+import sys
 from dotenv import load_dotenv
 import logging
 import joblib
@@ -15,7 +18,6 @@ from flask import Flask, jsonify, render_template, request, session, redirect, u
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
-import sys
 from logging.handlers import RotatingFileHandler
 import time
 import threading
@@ -32,13 +34,45 @@ warnings.filterwarnings('ignore')
 # Load environment variables from .env file for local development
 load_dotenv()
 
+# Environment configuration for cross-platform compatibility
+IS_RENDER = os.environ.get("RENDER", "false").lower() == "true"
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+PORT = int(os.environ.get("PORT", 10000))
+
+# Optimize for production
+if IS_RENDER:
+    print("🚀 Running in PRODUCTION mode (Render)")
+    TRAINING_SAMPLES = 400  # Smaller for production
+    MAX_DATA_POINTS = 10    # Keep less history
+    # Production optimizations
+    gc.set_threshold(700, 10, 5)  # More aggressive garbage collection
+else:
+    print("🔧 Running in DEVELOPMENT mode")
+    TRAINING_SAMPLES = 800
+    MAX_DATA_POINTS = 20
+
 # Configure logging based on environment
-if os.environ.get("DEBUG", "False").lower() == "true":
+if DEBUG:
     logging.basicConfig(level=logging.DEBUG)
+    print("🔍 Debug logging enabled")
 else:
     logging.basicConfig(level=logging.INFO)
+    print("📝 Production logging enabled")
 
 logger = logging.getLogger(__name__)
+
+# Memory monitoring function (cross-platform)
+def log_memory_usage():
+    """Log memory usage for debugging"""
+    try:
+        import psutil
+        process = psutil.Process()
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        logger.info(f"📊 Memory usage: {memory_mb:.1f} MB")
+        return memory_mb
+    except ImportError:
+        # psutil not available, skip silently
+        return None
 
 # Create Flask app
 app = Flask(__name__, template_folder='templates')
@@ -46,7 +80,7 @@ app = Flask(__name__, template_folder='templates')
 # Get secret key from environment with fallback for development only
 secret_key = os.environ.get("SESSION_SECRET")
 if not secret_key:
-    if os.environ.get("DEBUG", "False").lower() == "true":
+    if DEBUG:
         # Only use fallback in development
         secret_key = "dev-fallback-key-change-in-production"
         logger.warning("Using development fallback secret key - set SESSION_SECRET environment variable for production")
@@ -64,20 +98,26 @@ CORS(app)
 # Socket.IO configuration with proper CORS for Render
 socketio_config = {
     'async_mode': 'threading',
-    'logger': logger.level == logging.DEBUG,
-    'engineio_logger': logger.level == logging.DEBUG
+    'logger': DEBUG,
+    'engineio_logger': DEBUG,
+    'ping_timeout': 60,
+    'ping_interval': 25
 }
 
 # Set CORS origins based on environment
-if os.environ.get("DEBUG", "False").lower() == "true":
+if DEBUG:
     socketio_config['cors_allowed_origins'] = "*"
+    print("🌐 CORS set to allow all origins (development)")
 else:
-    # Production - allow both Render domain and localhost for testing
+    # Production - allow Render domain and localhost for testing
+    render_domain = os.environ.get("RENDER_EXTERNAL_URL", "https://safe-space-monitor.onrender.com")
     socketio_config['cors_allowed_origins'] = [
+        render_domain,
         "https://safe-space-monitor.onrender.com",
         "http://localhost:5000",
         "http://localhost:10000"
     ]
+    print(f"🌐 CORS set for production: {socketio_config['cors_allowed_origins']}")
 
 socketio = SocketIO(app, **socketio_config)
 
@@ -87,14 +127,24 @@ threshold = float(os.environ.get("MODEL_THRESHOLD", "0.5"))
 model_metadata = {}
 
 # Log startup configuration
-logger.info(f"App started with DEBUG={os.environ.get('DEBUG', 'False')}")
+logger.info(f"App started with DEBUG={DEBUG}, RENDER={IS_RENDER}")
 logger.info(f"Model threshold: {threshold}")
+logger.info(f"Server port: {PORT}")
 
-# Sensor thresholds
+# Sensor thresholds - configurable via environment variables
 THRESHOLDS = {
-    "noise": {"warning": 70, "danger": 100},
-    "light": {"warning": 3000, "danger": 8000}, 
-    "motion": {"warning": 50, "danger": 80}
+    "noise": {
+        "warning": float(os.environ.get("NOISE_WARNING", "70")),
+        "danger": float(os.environ.get("NOISE_DANGER", "100"))
+    },
+    "light": {
+        "warning": float(os.environ.get("LIGHT_WARNING", "3000")),
+        "danger": float(os.environ.get("LIGHT_DANGER", "8000"))
+    },
+    "motion": {
+        "warning": float(os.environ.get("MOTION_WARNING", "50")),
+        "danger": float(os.environ.get("MOTION_DANGER", "80"))
+    }
 }
 
 # Store recent data for real-time display
@@ -107,8 +157,8 @@ recent_data = {
 # Enhanced user profiles storage
 user_profiles = {
     'default': {
-        'name': 'Alex',
-        'age': 8,
+        'name': os.environ.get("DEFAULT_USER_NAME", "Alex"),
+        'age': int(os.environ.get("DEFAULT_USER_AGE", "8")),
         'preferences': {
             'sensory_preferences': {
                 'noise_sensitivity': 'medium',
@@ -220,7 +270,7 @@ enhanced_activities = [
     }
 ]
 
-# Enhanced ML Model with PROPER NaN handling - COMPLETE FIX
+# Enhanced ML Model with PROPER calibration for real-world data
 class EnhancedSensoryModel:
     def __init__(self):
         self.model = None
@@ -232,48 +282,46 @@ class EnhancedSensoryModel:
         self.is_trained = False
         self.is_imputer_fitted = False
         
-    def generate_training_data(self, n_samples=1000):
-        """Generate realistic synthetic training data"""
+    def generate_realistic_training_data(self, n_samples=1000):
+        """Generate PROPERLY calibrated training data for real-world scenarios"""
         np.random.seed(42)
         data = []
         
         for i in range(n_samples):
-            # Normal state (60% of data)
-            if i < 0.6 * n_samples:
-                noise = np.random.normal(50, 15)
-                light = np.random.normal(2000, 800)
-                motion = np.random.normal(30, 12)
+            # Normal state (85% of data) - most environments are normal
+            if i < 0.85 * n_samples:
+                noise = np.random.normal(45, 12)    # Normal indoor: 30-60 dB
+                light = np.random.normal(800, 400)  # Normal indoor: 200-1600 lux
+                motion = np.random.normal(25, 15)   # Normal activity: 0-50%
                 overload = 0
-            # Auditory overload (15% of data)
-            elif i < 0.75 * n_samples:
-                noise = np.random.normal(90, 20)
-                light = np.random.normal(1800, 600)
-                motion = np.random.normal(25, 10)
-                overload = 1
-            # Visual overload (15% of data)
-            elif i < 0.9 * n_samples:
-                noise = np.random.normal(55, 12)
-                light = np.random.normal(6000, 1500)
-                motion = np.random.normal(20, 8)
-                overload = 1
-            # Motion overload (10% of data)
+            
+            # True overload states (15% of data) - only extreme values
             else:
-                noise = np.random.normal(60, 10)
-                light = np.random.normal(2200, 700)
-                motion = np.random.normal(70, 15)
-                overload = 1
+                # Auditory overload (5%) - only when noise is extreme
+                if i < 0.90 * n_samples:
+                    noise = np.random.normal(90, 10)     # Loud: 80-110 dB
+                    light = np.random.normal(1000, 300)  # Normal light
+                    motion = np.random.normal(30, 10)    # Slightly elevated
+                    overload = 1
+                    
+                # Visual overload (5%) - only when light is extreme
+                elif i < 0.95 * n_samples:
+                    noise = np.random.normal(50, 10)     # Normal noise
+                    light = np.random.normal(6000, 1500) # Very bright: 4000-9000 lux
+                    motion = np.random.normal(20, 8)     # Normal motion
+                    overload = 1
+                    
+                # Motion overload (5%) - only when motion is extreme
+                else:
+                    noise = np.random.normal(60, 15)     # Elevated noise
+                    light = np.random.normal(1200, 400)  # Normal light
+                    motion = np.random.normal(80, 10)    # High motion: 70-100%
+                    overload = 1
             
             # Ensure realistic ranges
             noise = max(20, min(120, noise))
-            light = max(100, min(10000, light))
+            light = max(50, min(10000, light))
             motion = max(0, min(100, motion))
-            
-            # Introduce some NaN values (5% of data)
-            if np.random.random() < 0.05:
-                nan_choice = np.random.choice(['noise', 'light', 'motion'])
-                if nan_choice == 'noise': noise = np.nan
-                elif nan_choice == 'light': light = np.nan
-                else: motion = np.nan
             
             data.append({
                 'noise': noise, 'light': light, 'motion': motion,
@@ -316,11 +364,17 @@ class EnhancedSensoryModel:
         self.feature_names = features
         return df_features[features]
     
-    def train(self, n_samples=1000):
-        """Train model with PROPER imputer fitting"""
+    def train(self, n_samples=None):
+        """Train model with optimized memory usage and realistic data"""
+        if n_samples is None:
+            # Use environment-specific samples
+            n_samples = TRAINING_SAMPLES
+        
+        print(f"🔄 Generating REALISTIC training data ({n_samples} samples)...")
+
         try:
             print("🔄 Generating training data...")
-            df = self.generate_training_data(n_samples)
+            df = self.generate_realistic_training_data(n_samples)
             
             print("🔧 Extracting features...")
             X = self.extract_features(df)
@@ -351,7 +405,7 @@ class EnhancedSensoryModel:
             self.recall = recall_score(y_test, y_pred, zero_division=0)
             self.is_trained = True
             
-            print(f"✅ Model trained! Accuracy: {self.accuracy:.3f}")
+            print(f"✅ Model trained! Accuracy: {self.accuracy:.3f}, Precision: {self.precision:.3f}, Recall: {self.recall:.3f}")
             print(f"🔧 Features: {len(self.feature_names)}, Imputer fitted: {self.is_imputer_fitted}")
             
             return self.model
@@ -430,24 +484,32 @@ class EnhancedSensoryModel:
             return self._fallback_prediction(sensor_data)
     
     def _fallback_prediction(self, sensor_data):
-        """Simple fallback prediction"""
+        """Improved fallback prediction with better thresholds"""
         noise = sensor_data.get('noise', 0) or 0
         light = sensor_data.get('light', 0) or 0
         motion = sensor_data.get('motion', 0) or 0
         
         risk_score = 0.0
-        if noise > 80: risk_score += 0.4
-        elif noise > 70: risk_score += 0.2
-        if light > 5000: risk_score += 0.4
-        elif light > 3000: risk_score += 0.2
-        if motion > 60: risk_score += 0.2
-        elif motion > 50: risk_score += 0.1
+        
+        # More realistic thresholds based on your actual sensor data
+        if noise > 85: risk_score += 0.5      # Only high noise contributes significantly
+        elif noise > 75: risk_score += 0.2    # Moderate noise minor contribution
+        
+        if light > 4000: risk_score += 0.4    # Very bright light
+        elif light > 2500: risk_score += 0.1  # Bright but not dangerous
+        
+        if motion > 70: risk_score += 0.3     # High motion
+        elif motion > 50: risk_score += 0.1   # Moderate motion
+        
+        # Cap at 1.0 and ensure minimum confidence
+        probability = min(risk_score, 1.0)
+        confidence = max(0.6, probability if probability > 0.5 else 1 - probability)
         
         return {
-            'probability': min(risk_score, 1.0),
-            'prediction': int(risk_score > 0.5),
-            'confidence': 0.7,
-            'model_used': 'fallback_threshold',
+            'probability': probability,
+            'prediction': int(probability > 0.6),  # Higher threshold for prediction
+            'confidence': confidence,
+            'model_used': 'improved_fallback',
             'features_used': 3,
             'nan_handled': True
         }
@@ -462,7 +524,8 @@ class EnhancedSensoryModel:
             'model': self.model, 'feature_names': self.feature_names,
             'accuracy': self.accuracy, 'precision': self.precision, 'recall': self.recall,
             'imputer': self.imputer, 'is_trained': self.is_trained,
-            'is_imputer_fitted': self.is_imputer_fitted
+            'is_imputer_fitted': self.is_imputer_fitted,
+            'training_date': datetime.now().isoformat()
         }
         
         joblib.dump(model_data, filepath)
@@ -510,11 +573,11 @@ def initialize_enhanced_model():
         else:
             print("⚠️ Loaded model but not properly trained, retraining...")
     
-    # FORCE training a new model
-    print("🔄 Training new model (this may take a moment)...")
+    # FORCE training a new model with realistic data
+    print("🔄 Training new model with REALISTIC data (this may take a moment)...")
     try:
         os.makedirs('models', exist_ok=True)
-        success = enhanced_model.train(n_samples=1000)
+        success = enhanced_model.train(n_samples=TRAINING_SAMPLES)
         if success:
             enhanced_model.save_model(model_path)
             print("✅ New model trained and saved successfully!")
@@ -828,51 +891,6 @@ def start_background_simulation():
     except Exception as e:
         logger.error(f"Failed to start sensor simulation: {e}")
 
-# Real-time data broadcasting
-def broadcast_sensor_data():
-    """Broadcast real-time sensor data via WebSocket"""
-    while True:
-        try:
-            sensor_data = generate_sensor_data()
-            prediction = get_overload_prediction(sensor_data)
-            
-            # Store for real-time updates
-            recent_data['sensor_readings'].append({
-                'timestamp': datetime.now().isoformat(),
-                **sensor_data
-            })
-            recent_data['predictions'].append({
-                'timestamp': datetime.now().isoformat(),
-                'probability': prediction
-            })
-            
-            # Keep only last 60 points (1 minute of data)
-            for key in ['sensor_readings', 'predictions']:
-                if len(recent_data[key]) > 60:
-                    recent_data[key] = recent_data[key][-60:]
-            
-            # Emit real-time update
-            socketio.emit('sensor_update', {
-                'sensor_data': sensor_data,
-                'prediction': prediction,
-                'timestamp': datetime.now().isoformat()
-            })
-            
-            # Check for alerts
-            if prediction > 0.7:  # High overload probability
-                alert_data = {
-                    'message': f'High sensory overload risk detected! ({prediction:.1%})',
-                    'level': 'high',
-                    'timestamp': datetime.now().isoformat()
-                }
-                recent_data['alerts'].append(alert_data)
-                socketio.emit('alert', alert_data)
-            
-            time.sleep(1)  # 1Hz update rate
-        except Exception as e:
-            logger.error(f"Error in broadcast: {e}")
-            time.sleep(1)
-
 # Socket.IO event handlers
 @socketio.on('connect')
 def handle_connect():
@@ -948,7 +966,7 @@ def get_overload_message(overload_type):
     return messages.get(overload_type, 'Sensory overload detected. Try calming activities.')
 
 # =============================================================================
-# MISSING API ENDPOINTS - ADDED TO FIX 404 ERRORS
+# API ENDPOINTS
 # =============================================================================
 
 @app.route('/api/current')
@@ -1139,9 +1157,68 @@ def api_feedback():
         return jsonify({"success": True, "message": "Feedback recorded"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/model-diagnostics')
+def api_model_diagnostics():
+    """Diagnostic endpoint to check model behavior"""
+    test_cases = [
+        {'noise': 60, 'light': 1500, 'motion': 30},  # Normal
+        {'noise': 85, 'light': 1500, 'motion': 30},  # High noise
+        {'noise': 60, 'light': 4500, 'motion': 30},  # High light
+        {'noise': 60, 'light': 1500, 'motion': 75},  # High motion
+    ]
+    
+    results = []
+    for i, test_case in enumerate(test_cases):
+        prediction = enhanced_model.predict(test_case)
+        results.append({
+            'test_case': i,
+            'sensors': test_case,
+            'prediction': prediction
+        })
+    
+    return jsonify({
+        'model_status': {
+            'is_trained': enhanced_model.is_trained,
+            'is_imputer_fitted': enhanced_model.is_imputer_fitted,
+            'accuracy': enhanced_model.accuracy,
+            'features': len(enhanced_model.feature_names)
+        },
+        'test_results': results
+    })
+
+@app.route('/api/retrain-model', methods=['POST'])
+def api_retrain_model():
+    """Force retrain the model with better data"""
+    try:
+        print("🔄 Forcing model retraining with improved data...")
+        
+        # Use the new realistic training data
+        success = enhanced_model.train(n_samples=800)
+        
+        if success:
+            enhanced_model.save_model()
+            return jsonify({
+                "success": True,
+                "message": "Model retrained successfully",
+                "accuracy": enhanced_model.accuracy,
+                "precision": enhanced_model.precision,
+                "recall": enhanced_model.recall
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Model retraining failed"
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Retraining error: {str(e)}"
+        }), 500
 
 # =============================================================================
-# ROUTE REGISTRATION - FIXED TO PREVENT ENDPOINT CONFLICTS
+# ROUTE REGISTRATION
 # =============================================================================
 
 def register_routes():
@@ -1209,13 +1286,96 @@ def register_routes():
     @app.route('/health')
     def health():
         """Health check endpoint"""
+        memory_usage = log_memory_usage()
         return jsonify({
             "status": "healthy", 
             "timestamp": datetime.now().isoformat(),
             "model_loaded": model is not None,
             "enhanced_model_loaded": enhanced_model.is_trained,
-            "nan_handling": True
+            "nan_handling": True,
+            "memory_usage_mb": memory_usage,
+            "environment": "production" if IS_RENDER else "development"
         })
+
+# =============================================================================
+# OPTIMIZED BACKGROUND SERVICES FOR RENDER
+# =============================================================================
+
+def start_optimized_background_services():
+    """Start optimized background services for production"""
+    print("🚀 Starting optimized background services...")
+    
+    def optimized_broadcast():
+        """Optimized broadcast with proper alert thresholds"""
+        broadcast_count = 0
+        last_alert_time = 0
+        ALERT_COOLDOWN = 10  # 10 seconds between alerts
+        
+        while True:
+            try:
+                sensor_data = generate_sensor_data()
+                prediction_result = enhanced_model.predict(sensor_data)
+                prediction = prediction_result['probability']
+                
+                # Store data with limits
+                recent_data['sensor_readings'].append({
+                    'timestamp': datetime.now().isoformat(),
+                    **sensor_data
+                })
+                
+                # Keep data limited for memory efficiency
+                if len(recent_data['sensor_readings']) > MAX_DATA_POINTS:
+                    recent_data['sensor_readings'] = recent_data['sensor_readings'][-MAX_DATA_POINTS:]
+                
+                # Emit sensor update (every 2nd cycle to reduce load)
+                broadcast_count += 1
+                if broadcast_count % 2 == 0:
+                    socketio.emit('sensor_update', {
+                        'sensor_data': sensor_data,
+                        'prediction': prediction,
+                        'model_used': prediction_result.get('model_used', 'unknown'),
+                        'timestamp': datetime.now().isoformat()
+                    })
+                
+                # PROPER ALERT LOGIC - Only alert for truly dangerous situations
+                current_time = time.time()
+                should_alert = (
+                    prediction > 0.85 and  # High probability
+                    (
+                        sensor_data.get('noise', 0) > 85 or      # Actually loud
+                        sensor_data.get('light', 0) > 5000 or    # Actually bright  
+                        sensor_data.get('motion', 0) > 70         # Actually high motion
+                    ) and
+                    (current_time - last_alert_time) > ALERT_COOLDOWN  # Cooldown
+                )
+                
+                if should_alert:
+                    last_alert_time = current_time
+                    alert_data = {
+                        'message': f'High sensory overload detected! ({prediction:.1%})',
+                        'level': 'high',
+                        'sensor_data': sensor_data,
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    recent_data['alerts'].append(alert_data)
+                    socketio.emit('alert', alert_data)
+                    print(f"🚨 ALERT SENT: {prediction:.1%} - Noise: {sensor_data.get('noise')}, Light: {sensor_data.get('light')}, Motion: {sensor_data.get('motion')}")
+                
+                time.sleep(2)  # 0.5Hz update rate for production
+                
+                # Memory cleanup
+                if broadcast_count % 20 == 0:
+                    gc.collect()
+                    broadcast_count = 0
+                    
+            except Exception as e:
+                print(f"Error in optimized broadcast: {e}")
+                time.sleep(2)
+    
+    # Start the optimized broadcast thread
+    broadcast_thread = threading.Thread(target=optimized_broadcast, daemon=True)
+    broadcast_thread.start()
+    print("✅ Optimized background services started")
 
 # =============================================================================
 # APPLICATION INITIALIZATION
@@ -1250,27 +1410,51 @@ if not routes_loaded:
     logger.info("🔄 Registering built-in routes from app.py")
     register_routes()
 
-# Start background threads
-def start_background_services():
-    """Start all background services"""
-    # Start sensor simulation if available
-    start_background_simulation()
-    
-    # Start real-time broadcasting
-    broadcast_thread = threading.Thread(target=broadcast_sensor_data, daemon=True)
-    broadcast_thread.start()
-    logger.info("Real-time broadcasting started")
-
 # Start background services when app starts
-start_background_services()
+start_optimized_background_services()
+
+# Apply Render-specific optimizations
+def optimize_for_render():
+    """Apply Render-specific optimizations"""
+    if IS_RENDER:
+        print("🚀 Applying Render optimizations...")
+        
+        # Disable debug features
+        if hasattr(socketio, 'logger'):
+            socketio.logger = False
+            socketio.engineio_logger = False
+        
+        # Configure garbage collection
+        gc.set_threshold(700, 10, 5)
+        
+        print("✅ Render optimizations applied")
+
+# Apply optimizations
+optimize_for_render()
+
+# Memory monitoring in development
+if not IS_RENDER:
+    def periodic_memory_log():
+        """Periodic memory logging for development"""
+        while True:
+            log_memory_usage()
+            time.sleep(60)  # Log every minute
+    
+    memory_thread = threading.Thread(target=periodic_memory_log, daemon=True)
+    memory_thread.start()
+    print("📊 Memory monitoring started (development)")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    debug = os.environ.get("DEBUG", "False").lower() == "true"
+    print(f"🚀 Starting Flask-SocketIO server on port {PORT}...")
+    print(f"🔧 Debug mode: {DEBUG}")
+    print(f"🌐 Render mode: {IS_RENDER}")
+    print(f"📊 Training samples: {TRAINING_SAMPLES}")
+    print(f"💾 Max data points: {MAX_DATA_POINTS}")
     
-    # Use 10000 as default port for Render
+    # Use SocketIO for both development and production
     socketio.run(app, 
                 host="0.0.0.0", 
-                port=port, 
-                debug=debug, 
-                allow_unsafe_werkzeug=True)
+                port=PORT, 
+                debug=DEBUG, 
+                allow_unsafe_werkzeug=True,
+                log_output=DEBUG)
