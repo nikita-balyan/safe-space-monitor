@@ -2,6 +2,14 @@
 // Enhanced with Interactive Activities, User Profiles, and Advanced Features
 // FIXED: Recursive showToast function and improved error handling
 
+const socket = io({
+  transports: ["websocket"],   // 👈 force WebSocket
+  upgrade: true,               // 👈 ensure upgrade attempt
+  reconnection: true,          // auto reconnect
+  reconnectionAttempts: 5,
+  reconnectionDelay: 2000
+});
+
 class SensorDashboard {
     constructor() {
         this.currentView = 'caregiver';

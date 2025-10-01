@@ -119,7 +119,13 @@ else:
     ]
     print(f"🌐 CORS set for production: {socketio_config['cors_allowed_origins']}")
 
-socketio = SocketIO(app, **socketio_config)
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="eventlet",   # 👈 use eventlet
+    ping_timeout=60,
+    ping_interval=25
+)
 
 # Global variables for model and configuration
 model = None
