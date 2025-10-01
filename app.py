@@ -6,6 +6,7 @@ Integrated with separate routes.py for better organization
 """
 
 import os
+from dotenv import load_dotenv
 import logging
 import joblib
 from datetime import datetime
@@ -27,25 +28,63 @@ import warnings
 import random
 warnings.filterwarnings('ignore')
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Load environment variables from .env file for local development
+load_dotenv()
+
+# Configure logging based on environment
+if os.environ.get("DEBUG", "False").lower() == "true":
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__, template_folder='templates')
-app.secret_key = os.environ.get("SESSION_SECRET", "2bc6c2d929991b63e347bf47fd9c2afc4caab8fd7f0e1c62780cefedef792a37")
+
+# Get secret key from environment with fallback for development only
+secret_key = os.environ.get("SESSION_SECRET")
+if not secret_key:
+    if os.environ.get("DEBUG", "False").lower() == "true":
+        # Only use fallback in development
+        secret_key = "dev-fallback-key-change-in-production"
+        logger.warning("Using development fallback secret key - set SESSION_SECRET environment variable for production")
+    else:
+        raise ValueError("SESSION_SECRET environment variable is required for production")
+
+app.secret_key = secret_key
+
+# Configure ProxyFix for proper headers behind proxies
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Add CORS support
+# Add CORS support with safer defaults
 CORS(app)
 
-# Socket.IO for real-time features
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+# Socket.IO configuration based on environment
+socketio_config = {
+    'cors_allowed_origins': "*",  # Consider restricting in production
+    'async_mode': 'threading',
+    'logger': logger.level == logging.DEBUG,
+    'engineio_logger': logger.level == logging.DEBUG
+}
+
+# For production, you might want to restrict origins:
+if os.environ.get("DEBUG", "False").lower() != "true":
+    socketio_config['cors_allowed_origins'] = [
+        "https://your-render-app.onrender.com",
+        # Add other production domains as needed
+    ]
+
+socketio = SocketIO(app, **socketio_config)
 
 # Global variables for model and configuration
 model = None
-threshold = 0.5
+threshold = float(os.environ.get("MODEL_THRESHOLD", "0.5"))
 model_metadata = {}
+
+# Log startup configuration
+logger.info(f"App started with DEBUG={os.environ.get('DEBUG', 'False')}")
+logger.info(f"Model threshold: {threshold}")
 
 # Sensor thresholds
 THRESHOLDS = {

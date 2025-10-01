@@ -3,7 +3,6 @@
 **Duration**: 5 minutes  
 **Style**: Professional, compelling, psychology-focused
 
----
 
 ## 🎬 PRODUCTION NOTES
 

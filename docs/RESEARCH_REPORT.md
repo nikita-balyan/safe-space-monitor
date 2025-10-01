@@ -4,9 +4,6 @@
 **Author**: Nikita Balyan  
 **Date**: September 2025  
 **Project**: Safe Space Monitor - AI-Powered Sensory Overload Detection  
-**Word Count**: 2000 words
-
----
 
 ## Abstract
 
