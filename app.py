@@ -1,4 +1,5 @@
-﻿"""
+﻿#app.py
+"""
 Flask application factory and configuration with Real-Time Features
 Enhanced with Interactive Calming Activities, Advanced AI Model, and User Profiles
 Integrated with separate routes.py for better organization
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__, template_folder='templates')
-app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
+app.secret_key = os.environ.get("SESSION_SECRET", "2bc6c2d929991b63e347bf47fd9c2afc4caab8fd7f0e1c62780cefedef792a37")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Add CORS support

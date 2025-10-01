@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+# model_training.py
 """
 ML Model Training Script for Overload Prediction
-Trains Logistic Regression and Decision Tree models on sensor data with features
+Fixed version with NaN handling and data generation
 """
 
 import os
@@ -11,349 +11,310 @@ import joblib
 import json
 from pathlib import Path
 from datetime import datetime
-from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score, 
-    confusion_matrix, classification_report, roc_auc_score
-)
-import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # Configuration
-DATA_DIR = Path("data")
 MODELS_DIR = Path("models")
 MODELS_DIR.mkdir(exist_ok=True)
 
-FEATURES_FILE = DATA_DIR / "features_data.csv"
-MODEL_PATH = MODELS_DIR / "overload_model.joblib"
-THRESHOLD_PATH = MODELS_DIR / "model_threshold.txt"
-METADATA_PATH = MODELS_DIR / "model_metadata.json"
-SCALER_PATH = MODELS_DIR / "feature_scaler.joblib"
+MODEL_PATH = MODELS_DIR / "enhanced_overload_model.joblib"
+METADATA_PATH = MODELS_DIR / "enhanced_model_metadata.json"
 
-class OverloadPredictor:
-    """ML Pipeline for overload prediction"""
+def generate_initial_training_data(num_samples=200):
+    """Generate synthetic training data when none exists"""
+    print("🔄 Generating initial training data...")
     
-    def __init__(self):
-        self.models = {}
-        self.best_model = None
-        self.best_model_name = None
-        self.scaler = StandardScaler()
-        self.feature_names = []
-        self.threshold = 0.5
-        self.metadata = {}
+    data = []
+    for i in range(num_samples):
+        # Generate realistic sensor values
+        noise = np.random.uniform(30, 100)  # dB
+        light = np.random.uniform(0, 1000)   # lux
+        motion = np.random.uniform(0, 1)     # activity level
         
-    def load_data(self):
-        """Load and prepare training data"""
-        if not FEATURES_FILE.exists():
-            raise FileNotFoundError(f"Features file not found: {FEATURES_FILE}")
+        # Define overload rules based on realistic thresholds
+        if noise > 80 or light > 800 or motion > 0.8:
+            overload = 1  # Overload detected
+        else:
+            overload = 0  # Comfortable
         
-        print(f"Loading data from {FEATURES_FILE}")
-        df = pd.read_csv(FEATURES_FILE)
-        
-        if len(df) < 100:
-            print(f"Warning: Only {len(df)} samples available. Consider collecting more data.")
-        
-        print(f"Dataset shape: {df.shape}")
-        print(f"Label distribution:\n{df['label'].value_counts()}")
-        
-        return df
+        data.append({
+            'timestamp': datetime.now().isoformat(),
+            'noise': noise,
+            'light': light,
+            'motion': motion,
+            'overload': overload
+        })
     
-    def prepare_features(self, df):
-        """Prepare features for training"""
-        # Define feature columns (exclude timestamp and label)
-        feature_cols = [col for col in df.columns if col not in ['timestamp', 'label']]
-        
-        X = df[feature_cols].copy()
-        y = df['label'].copy()
-        
-        # Handle missing values
-        X = X.fillna(0)
-        
-        # Store feature names
-        self.feature_names = feature_cols
-        
-        print(f"Features selected: {len(feature_cols)}")
-        print(f"Feature names: {feature_cols[:10]}{'...' if len(feature_cols) > 10 else ''}")
-        
-        return X, y
+    # Create DataFrame
+    df = pd.DataFrame(data)
     
-    def train_models(self, X, y):
-        """Train multiple models and compare performance"""
+    # Save to CSV
+    df.to_csv('training_data.csv', index=False)
+    print(f"✅ Generated {num_samples} initial training samples")
+    print(f"📊 Class distribution:")
+    print(df['overload'].value_counts())
+    
+    return df
+
+def train_enhanced_model():
+    """Train an enhanced model with proper error handling and NaN protection"""
+    try:
+        print("🚀 Starting enhanced model training...")
+        
+        # Create models directory
+        os.makedirs('models', exist_ok=True)
+        
+        # Check if training data exists, generate if not
+        if not os.path.exists('training_data.csv') or os.path.getsize('training_data.csv') < 100:
+            print("📝 No training data found, generating initial data...")
+            df = generate_initial_training_data(100)
+        else:
+            df = pd.read_csv('training_data.csv')
+        
+        if len(df) == 0:
+            print("❌ Training data is empty, generating data...")
+            df = generate_initial_training_data(100)
+        
+        print(f"📊 Loaded {len(df)} training samples")
+        print(f"🔍 Columns: {df.columns.tolist()}")
+        
+        # Check for required columns
+        required_features = ['noise', 'light', 'motion']
+        required_target = 'overload'
+        
+        missing_features = [col for col in required_features if col not in df.columns]
+        if missing_features:
+            print(f"❌ Missing required features: {missing_features}")
+            return None, None
+            
+        if required_target not in df.columns:
+            print(f"❌ Missing target column: {required_target}")
+            return None, None
+        
+        # Prepare features and labels
+        X = df[required_features]
+        y = df[required_target]
+        
+        # Data quality check
+        print(f"🔍 Data quality check:")
+        print(f"   - NaN values in features: {X.isna().sum().sum()}")
+        print(f"   - NaN values in target: {y.isna().sum()}")
+        print(f"   - Feature shapes: {X.shape}")
+        print(f"   - Target distribution:\n{y.value_counts()}")
+        
+        # Handle NaN values
+        X = X.fillna(X.mean())
+        y = y.fillna(y.mode()[0] if len(y.mode()) > 0 else 0)
+        
+        # Check if we have enough data
+        if len(X) < 10:
+            print("❌ Not enough training data after cleaning")
+            return None, None
+        
         # Split data
-        X_train, X_temp, y_train, y_temp = train_test_split(
-            X, y, test_size=0.4, random_state=42, stratify=y
-        )
-        X_val, X_test, y_val, y_test = train_test_split(
-            X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        print(f"Training set: {len(X_train)} samples")
-        print(f"Validation set: {len(X_val)} samples") 
-        print(f"Test set: {len(X_test)} samples")
+        # Create pipeline with imputer for robust NaN handling
+        model = Pipeline([
+            ('imputer', SimpleImputer(strategy='mean')),  # Handles any NaNs during prediction
+            ('classifier', RandomForestClassifier(
+                n_estimators=50,  # Reduced for faster training
+                random_state=42,
+                max_depth=8,
+                min_samples_split=3
+            ))
+        ])
         
-        # Store test set for final evaluation
-        self.X_test, self.y_test = X_test, y_test
+        # Train model
+        print("🔄 Training Random Forest model with pipeline...")
+        model.fit(X_train, y_train)
         
-        # Model configurations
-        model_configs = {
-            'logistic_regression': {
-                'model': Pipeline([
-                    ('scaler', StandardScaler()),
-                    ('lr', LogisticRegression(random_state=42, max_iter=1000))
-                ]),
-                'params': {
-                    'lr__C': [0.1, 1.0, 10.0],
-                    'lr__class_weight': ['balanced', None]
-                }
-            },
-            'decision_tree': {
-                'model': DecisionTreeClassifier(random_state=42),
-                'params': {
-                    'max_depth': [3, 5, 7, 10],
-                    'min_samples_split': [5, 10, 20],
-                    'min_samples_leaf': [2, 5, 10],
-                    'class_weight': ['balanced', None]
-                }
-            },
-            'random_forest': {
-                'model': RandomForestClassifier(random_state=42, n_estimators=100),
-                'params': {
-                    'max_depth': [3, 5, 7],
-                    'min_samples_split': [5, 10],
-                    'min_samples_leaf': [2, 5],
-                    'class_weight': ['balanced', None]
-                }
-            }
-        }
+        # Evaluate model
+        train_score = model.score(X_train, y_train)
+        test_score = model.score(X_test, y_test)
         
-        best_score = 0
-        results = {}
+        # Feature importance
+        feature_importance = {}
+        if hasattr(model.named_steps['classifier'], 'feature_importances_'):
+            importances = model.named_steps['classifier'].feature_importances_
+            for name, importance in zip(required_features, importances):
+                feature_importance[name] = float(importance)
         
-        # Train and evaluate each model
-        for name, config in model_configs.items():
-            print(f"\n--- Training {name.replace('_', ' ').title()} ---")
-            
-            # Grid search with cross-validation
-            grid_search = GridSearchCV(
-                config['model'], 
-                config['params'],
-                cv=5,
-                scoring='f1',  # Focus on F1 score for imbalanced data
-                n_jobs=-1,
-                verbose=1
-            )
-            
-            grid_search.fit(X_train, y_train)
-            
-            # Evaluate on validation set
-            best_model = grid_search.best_estimator_
-            val_predictions = best_model.predict(X_val)
-            val_probabilities = best_model.predict_proba(X_val)[:, 1]
-            
-            # Calculate metrics
-            metrics = {
-                'accuracy': accuracy_score(y_val, val_predictions),
-                'precision': precision_score(y_val, val_predictions),
-                'recall': recall_score(y_val, val_predictions),
-                'f1': f1_score(y_val, val_predictions),
-                'roc_auc': roc_auc_score(y_val, val_probabilities)
-            }
-            
-            results[name] = {
-                'model': best_model,
-                'params': grid_search.best_params_,
-                'metrics': metrics,
-                'cv_score': grid_search.best_score_
-            }
-            
-            print(f"Best parameters: {grid_search.best_params_}")
-            print(f"Validation metrics: {metrics}")
-            
-            # Track best model
-            if metrics['f1'] > best_score:
-                best_score = metrics['f1']
-                self.best_model = best_model
-                self.best_model_name = name
-        
-        self.models = results
-        print(f"\nBest model: {self.best_model_name} (F1: {best_score:.3f})")
-        
-        return results
-    
-    def optimize_threshold(self, X_val, y_val):
-        """Optimize prediction threshold for best F1 score"""
-        if self.best_model is None:
-            return 0.5
-        
-        probabilities = self.best_model.predict_proba(X_val)[:, 1]
-        
-        best_threshold = 0.5
-        best_f1 = 0
-        
-        # Test different thresholds
-        thresholds = np.arange(0.1, 0.9, 0.05)
-        
-        for threshold in thresholds:
-            predictions = (probabilities >= threshold).astype(int)
-            f1 = f1_score(y_val, predictions)
-            
-            if f1 > best_f1:
-                best_f1 = f1
-                best_threshold = threshold
-        
-        self.threshold = best_threshold
-        print(f"Optimal threshold: {best_threshold:.3f} (F1: {best_f1:.3f})")
-        
-        return best_threshold
-    
-    def final_evaluation(self):
-        """Evaluate best model on test set"""
-        if self.best_model is None:
-            raise ValueError("No model trained")
-        
-        # Predictions on test set
-        test_predictions = self.best_model.predict(self.X_test)
-        test_probabilities = self.best_model.predict_proba(self.X_test)[:, 1]
-        
-        # Apply optimized threshold
-        threshold_predictions = (test_probabilities >= self.threshold).astype(int)
-        
-        # Calculate final metrics
-        final_metrics = {
-            'test_accuracy': accuracy_score(self.y_test, test_predictions),
-            'test_precision': precision_score(self.y_test, test_predictions),
-            'test_recall': recall_score(self.y_test, test_predictions),
-            'test_f1': f1_score(self.y_test, test_predictions),
-            'test_roc_auc': roc_auc_score(self.y_test, test_probabilities),
-            'threshold_accuracy': accuracy_score(self.y_test, threshold_predictions),
-            'threshold_precision': precision_score(self.y_test, threshold_predictions),
-            'threshold_recall': recall_score(self.y_test, threshold_predictions),
-            'threshold_f1': f1_score(self.y_test, threshold_predictions)
-        }
-        
-        print("\n=== FINAL TEST RESULTS ===")
-        print("Default threshold (0.5):")
-        for metric in ['test_accuracy', 'test_precision', 'test_recall', 'test_f1', 'test_roc_auc']:
-            print(f"  {metric}: {final_metrics[metric]:.3f}")
-        
-        print(f"\nOptimized threshold ({self.threshold:.3f}):")
-        for metric in ['threshold_accuracy', 'threshold_precision', 'threshold_recall', 'threshold_f1']:
-            print(f"  {metric}: {final_metrics[metric]:.3f}")
-        
-        # Confusion matrix
-        cm = confusion_matrix(self.y_test, threshold_predictions)
-        print(f"\nConfusion Matrix (threshold={self.threshold:.3f}):")
-        print(cm)
-        
-        return final_metrics
-    
-    def save_model(self):
-        """Save the best model and metadata"""
-        if self.best_model is None:
-            raise ValueError("No model to save")
+        print(f"✅ Training accuracy: {train_score:.3f}")
+        print(f"✅ Testing accuracy: {test_score:.3f}")
+        print(f"🔍 Feature importances: {feature_importance}")
         
         # Save model
-        joblib.dump(self.best_model, MODEL_PATH)
-        print(f"Model saved to {MODEL_PATH}")
-        
-        # Save threshold
-        with open(THRESHOLD_PATH, 'w') as f:
-            f.write(str(self.threshold))
-        print(f"Threshold saved to {THRESHOLD_PATH}")
+        joblib.dump(model, MODEL_PATH)
         
         # Save metadata
-        self.metadata = {
-            'model_type': self.best_model_name,
-            'training_date': datetime.now().isoformat(),
-            'threshold': self.threshold,
-            'feature_names': self.feature_names,
-            'num_features': len(self.feature_names),
-            'model_params': self.models[self.best_model_name]['params'],
-            'metrics': self.models[self.best_model_name]['metrics']
+        metadata = {
+            "training_date": datetime.now().isoformat(),
+            "training_samples": len(df),
+            "features": required_features,
+            "train_accuracy": float(train_score),
+            "test_accuracy": float(test_score),
+            "feature_importance": feature_importance,
+            "model_type": "RandomForest_with_Imputer",
+            "pipeline_steps": list(model.named_steps.keys()),
+            "class_distribution": y.value_counts().to_dict()
         }
         
         with open(METADATA_PATH, 'w') as f:
-            json.dump(self.metadata, f, indent=2)
-        print(f"Metadata saved to {METADATA_PATH}")
-    
-    def train_pipeline(self):
-        """Complete training pipeline"""
-        print("=== Starting ML Training Pipeline ===")
+            json.dump(metadata, f, indent=2)
         
-        # Load data
-        df = self.load_data()
+        print(f"💾 Model saved to {MODEL_PATH}")
+        print(f"📝 Metadata saved to {METADATA_PATH}")
         
-        # Prepare features
-        X, y = self.prepare_features(df)
+        return model, metadata
         
-        # Check class balance
-        if y.sum() < 10:
-            print("Warning: Very few positive samples. Consider collecting more overload data.")
-        
-        # Train models
-        results = self.train_models(X, y)
-        
-        # For threshold optimization, we need validation data
-        # Split again for threshold optimization (use part of training data)
-        X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(
-            X.iloc[:-len(self.X_test)], y.iloc[:-len(self.y_test)], 
-            test_size=0.2, random_state=42, stratify=y.iloc[:-len(self.y_test)]
-        )
-        
-        # Optimize threshold
-        self.optimize_threshold(X_val_split, y_val_split)
-        
-        # Final evaluation
-        final_metrics = self.final_evaluation()
-        
-        # Save model
-        self.save_model()
-        
-        print("\n=== Training Complete ===")
-        return final_metrics
+    except Exception as e:
+        print(f"❌ Error training model: {e}")
+        import traceback
+        print(f"🔍 Debug info: {traceback.format_exc()}")
+        return None, None
 
-def collect_training_data_if_needed():
-    """Collect training data if features file doesn't exist or is too small"""
-    if not FEATURES_FILE.exists():
-        print("No features data found. Collecting training data...")
+def load_enhanced_model():
+    """Safely load the enhanced model with proper validation"""
+    try:
+        if not MODEL_PATH.exists():
+            print("⚠️ No trained model found")
+            return None
         
-        # Import and run data collection
-        from sensor_simulator import start_sensor_simulation, collect_training_data
-        import time
+        model = joblib.load(MODEL_PATH)
         
-        # Start simulation
-        start_sensor_simulation(interval=1)
-        print("Waiting for sensor buffer to fill...")
-        time.sleep(15)
-        
-        # Collect 3 minutes of data
-        collect_training_data(duration_minutes=3)
-        print("Training data collection complete.")
-    else:
-        df = pd.read_csv(FEATURES_FILE)
-        if len(df) < 100:
-            print(f"Only {len(df)} samples found. Collecting more data...")
+        # Validate that the model is properly trained
+        if hasattr(model, 'named_steps') and 'classifier' in model.named_steps:
+            classifier = model.named_steps['classifier']
+            if hasattr(classifier, 'classes_'):
+                print(f"✅ Loaded trained model with {len(classifier.classes_)} classes")
+                return model
+            else:
+                print("⚠️ Model file exists but classifier is not trained")
+                return None
+        else:
+            print("⚠️ Model file exists but pipeline structure is invalid")
+            return None
             
-            from sensor_simulator import start_sensor_simulation, collect_training_data
-            import time
+    except Exception as e:
+        print(f"❌ Error loading model: {e}")
+        return None
+
+def predict_with_model(model, sensor_data):
+    """Safe prediction with the model"""
+    if model is None:
+        print("⚠️ Model not available for prediction")
+        return None, 0.0
+    
+    try:
+        # Convert features to DataFrame with correct column names
+        feature_df = pd.DataFrame([[
+            sensor_data.get('noise', 50),
+            sensor_data.get('light', 500), 
+            sensor_data.get('motion', 0.5)
+        ]], columns=['noise', 'light', 'motion'])
+        
+        # Ensure no NaN values
+        feature_df = feature_df.fillna(feature_df.mean())
+        
+        # Make prediction
+        prediction = model.predict(feature_df)[0]
+        probabilities = model.predict_proba(feature_df)[0]
+        confidence = np.max(probabilities)
+        
+        print(f"🎯 Model prediction: {prediction} (confidence: {confidence:.3f})")
+        
+        return prediction, confidence
+        
+    except Exception as e:
+        print(f"❌ Prediction error: {e}")
+        return None, 0.0
+
+def validate_training_data():
+    """Validate and clean training data"""
+    try:
+        if not os.path.exists('training_data.csv'):
+            print("❌ training_data.csv not found! Generating initial data...")
+            generate_initial_training_data(50)
+            return True
             
-            start_sensor_simulation(interval=1)
-            time.sleep(15)
-            collect_training_data(duration_minutes=2)
+        df = pd.read_csv('training_data.csv')
+        print("📊 Training Data Validation Report:")
+        print(f"   - Total rows: {len(df)}")
+        print(f"   - Columns: {df.columns.tolist()}")
+        print(f"   - NaN values per column:")
+        for col in df.columns:
+            nan_count = df[col].isna().sum()
+            print(f"     {col}: {nan_count} NaN(s)")
+        
+        # Check for required columns
+        required_cols = ['noise', 'light', 'motion', 'overload']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if missing_cols:
+            print(f"❌ Missing required columns: {missing_cols}")
+            print("🔄 Regenerating training data...")
+            generate_initial_training_data(50)
+            return True
+        
+        # Clean the data
+        df_clean = df.copy()
+        
+        # Fill NaN values
+        for col in ['noise', 'light', 'motion']:
+            if col in df_clean.columns:
+                df_clean[col] = df_clean[col].fillna(df_clean[col].mean())
+        
+        if 'overload' in df_clean.columns:
+            df_clean['overload'] = df_clean['overload'].fillna(
+                df_clean['overload'].mode()[0] if len(df_clean['overload'].mode()) > 0 else 0
+            )
+        
+        # Save cleaned data
+        df_clean.to_csv('training_data.csv', index=False)
+        print("✅ Data validated and cleaned successfully")
+        
+        # Show class distribution
+        if 'overload' in df_clean.columns:
+            print(f"📈 Class distribution: {df_clean['overload'].value_counts().to_dict()}")
+            
+        return True
+        
+    except Exception as e:
+        print(f"❌ Data validation error: {e}")
+        print("🔄 Attempting to regenerate training data...")
+        generate_initial_training_data(50)
+        return False
+
+# Initialize model on import
+enhanced_model = load_enhanced_model()
 
 if __name__ == "__main__":
-    # Ensure we have training data
-    collect_training_data_if_needed()
+    print("🚀 Starting enhanced model training process...")
     
-    # Train model
-    predictor = OverloadPredictor()
-    metrics = predictor.train_pipeline()
-    
-    print(f"\nModel training completed successfully!")
-    print(f"Best model: {predictor.best_model_name}")
-    print(f"Final F1 score: {metrics['threshold_f1']:.3f}")
+    # First validate the data
+    if validate_training_data():
+        # Then train the model
+        model, metadata = train_enhanced_model()
+        if model is not None:
+            print("🎉 Model training completed successfully!")
+            
+            # Test the model with sample data
+            print("🧪 Testing model with sample data...")
+            test_features = {
+                'noise': 65.5,
+                'light': 300.0,
+                'motion': 0.8
+            }
+            prediction, confidence = predict_with_model(model, test_features)
+            print(f"🧪 Test prediction: {prediction}, confidence: {confidence:.3f}")
+        else:
+            print("❌ Model training failed")
+    else:
+        print("❌ Data validation failed")

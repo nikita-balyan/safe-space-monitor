@@ -15,7 +15,7 @@ class SensorDashboard {
         this.recommendationCooldown = 30000;
         this.currentOverloadType = null;
         this.isInitialized = false;
-        this.socket = io(); // Socket.IO connection
+        this.socket = null; // Will be initialized after DOM ready
         
         // Enhanced properties
         this.enhancedActivities = [];
@@ -44,6 +44,13 @@ class SensorDashboard {
         
         // Wait for DOM to be fully ready
         await this.waitForDOM();
+        
+        // Initialize Socket.IO after DOM is ready
+        if (typeof io !== 'undefined') {
+            this.socket = io();
+        } else {
+            console.warn('Socket.io not available - running in demo mode');
+        }
         
         // Clear any existing charts first
         this.destroyCharts();
@@ -631,20 +638,34 @@ class SensorDashboard {
         }
     }
 
-    // Existing methods with enhancements
+    // Fixed Socket.IO setup with error handling
     setupSocketListeners() {
         console.log('🔌 Setting up Socket.IO listeners...');
         
+        if (!this.socket) {
+            console.warn('Socket not available - running in demo mode');
+            this.startDemoMode();
+            return;
+        }
+
         // Real-time sensor updates
         this.socket.on('sensor_update', (data) => {
-            console.log('📡 Real-time update received:', data);
-            this.handleRealTimeUpdate(data);
+            try {
+                console.log('📡 Real-time update received:', data);
+                this.handleRealTimeUpdate(data);
+            } catch (error) {
+                console.error('Error processing sensor update:', error);
+            }
         });
 
         // Real-time alerts
         this.socket.on('alert', (alertData) => {
-            console.log('🚨 Alert received:', alertData);
-            this.handleRealTimeAlert(alertData);
+            try {
+                console.log('🚨 Alert received:', alertData);
+                this.handleRealTimeAlert(alertData);
+            } catch (error) {
+                console.error('Error processing alert:', error);
+            }
         });
 
         // Connection status
@@ -665,6 +686,37 @@ class SensorDashboard {
             this.isOnline = false;
             this.updateConnectionStatus(false);
         });
+    }
+
+    // Demo mode for when Socket.IO is not available
+    startDemoMode() {
+        console.log('🎭 Starting demo mode with simulated data');
+        
+        setInterval(() => {
+            const mockData = {
+                sensor_data: {
+                    noise: Math.random() * 100,
+                    light: Math.random() * 5000,
+                    motion: Math.random() * 100,
+                    temperature: 22 + Math.random() * 2,
+                    heart_rate: 70 + Math.floor(Math.random() * 20)
+                },
+                prediction: Math.random(),
+                timestamp: new Date().toISOString()
+            };
+            
+            this.handleRealTimeUpdate(mockData);
+            
+            // Occasionally trigger alerts
+            if (Math.random() > 0.8) {
+                const alertData = {
+                    message: 'Demo: High sensory overload risk detected!',
+                    level: Math.random() > 0.5 ? 'high' : 'warning',
+                    timestamp: new Date().toISOString()
+                };
+                this.handleRealTimeAlert(alertData);
+            }
+        }, 2000);
     }
 
     updateConnectionStatus(connected) {
@@ -698,11 +750,28 @@ class SensorDashboard {
         this.updateSystemInfo();
     }
 
+    // Fixed alert handling
     handleRealTimeAlert(alertData) {
-        this.addAlert(alertData.message, alertData.level, alertData.timestamp);
-        
-        // Show immediate notification
-        this.showToast('Alert Triggered', alertData.message, alertData.level === 'high' ? 'error' : 'warning');
+        try {
+            console.log('🚨 Alert received:', alertData);
+            
+            // Check if alertData exists and has the required properties
+            if (!alertData || typeof alertData !== 'object') {
+                console.warn('Invalid alert data received');
+                return;
+            }
+
+            const message = alertData.message || 'Alert received';
+            const level = alertData.level || 'info';
+            const timestamp = alertData.timestamp || new Date().toISOString();
+
+            this.addAlert(message, level, timestamp);
+            
+            // Show immediate notification
+            this.showToast('Alert Triggered', message, level === 'high' ? 'error' : 'warning');
+        } catch (error) {
+            console.error('❌ Error handling alert:', error);
+        }
     }
 
     switchView(view) {
@@ -756,15 +825,27 @@ class SensorDashboard {
         
         // Destroy all existing charts
         if (this.sensorChart) {
-            this.sensorChart.destroy();
+            try {
+                this.sensorChart.destroy();
+            } catch (e) {
+                console.log('Error destroying sensor chart:', e);
+            }
             this.sensorChart = null;
         }
         if (this.predictionChart) {
-            this.predictionChart.destroy();
+            try {
+                this.predictionChart.destroy();
+            } catch (e) {
+                console.log('Error destroying prediction chart:', e);
+            }
             this.predictionChart = null;
         }
         if (this.gaugeChart) {
-            this.gaugeChart.destroy();
+            try {
+                this.gaugeChart.destroy();
+            } catch (e) {
+                console.log('Error destroying gauge chart:', e);
+            }
             this.gaugeChart = null;
         }
         
@@ -786,10 +867,13 @@ class SensorDashboard {
         let ctx = null;
         
         for (const selector of selectors) {
-            ctx = document.querySelector(selector);
-            if (ctx && ctx.getContext) {
-                console.log(`✅ Found chart canvas with selector: ${selector}`);
-                break;
+            const element = document.querySelector(selector);
+            if (element && element.getContext) {
+                ctx = element.getContext('2d');
+                if (ctx) {
+                    console.log(`✅ Found chart canvas with selector: ${selector}`);
+                    break;
+                }
             }
         }
         
@@ -922,8 +1006,11 @@ class SensorDashboard {
         let ctx = null;
         
         for (const selector of selectors) {
-            ctx = document.querySelector(selector);
-            if (ctx && ctx.getContext) break;
+            const element = document.querySelector(selector);
+            if (element && element.getContext) {
+                ctx = element.getContext('2d');
+                if (ctx) break;
+            }
         }
         
         if (!ctx) {
@@ -1009,8 +1096,11 @@ class SensorDashboard {
         let ctx = null;
         
         for (const selector of selectors) {
-            ctx = document.querySelector(selector);
-            if (ctx && ctx.getContext) break;
+            const element = document.querySelector(selector);
+            if (element && element.getContext) {
+                ctx = element.getContext('2d');
+                if (ctx) break;
+            }
         }
         
         if (!ctx) {
@@ -1083,6 +1173,7 @@ class SensorDashboard {
         });
     }
 
+    // Fixed chart update function
     updateRealTimeCharts() {
         // Check if charts are ready
         if (!this.sensorChart) {
@@ -1114,6 +1205,26 @@ class SensorDashboard {
                 this.predictionChart.data.labels = timestamps;
                 this.predictionChart.data.datasets[0].data = predictions;
                 this.predictionChart.update('none');
+            }
+            
+            // Update gauge chart if it exists
+            if (this.gaugeChart && predictions.length > 0) {
+                const currentPrediction = predictions[predictions.length - 1];
+                const probabilityPercent = currentPrediction * 100;
+                this.gaugeChart.data.datasets[0].data = [probabilityPercent, 100 - probabilityPercent];
+                
+                // Update gauge color based on risk level
+                let gaugeColor;
+                if (currentPrediction > 0.7) {
+                    gaugeColor = '#dc3545'; // Red for high risk
+                } else if (currentPrediction > 0.4) {
+                    gaugeColor = '#ffc107'; // Yellow for medium risk
+                } else {
+                    gaugeColor = '#28a745'; // Green for low risk
+                }
+                
+                this.gaugeChart.data.datasets[0].backgroundColor = [gaugeColor, '#e9ecef'];
+                this.gaugeChart.update('none');
             }
             
             console.log('✅ Charts updated successfully');
@@ -1165,25 +1276,6 @@ class SensorDashboard {
         // Update risk value (if element exists)
         this.updateElementText('riskValue', (probability * 100).toFixed(1) + '%');
         this.updateElementText('gaugePercentage', (probability * 100).toFixed(0) + '%');
-        
-        // Update gauge chart
-        if (this.gaugeChart) {
-            const probabilityPercent = probability * 100;
-            this.gaugeChart.data.datasets[0].data = [probabilityPercent, 100 - probabilityPercent];
-            
-            // Update gauge color based on risk level
-            let gaugeColor;
-            if (probability > 0.7) {
-                gaugeColor = '#dc3545'; // Red for high risk
-            } else if (probability > 0.4) {
-                gaugeColor = '#ffc107'; // Yellow for medium risk
-            } else {
-                gaugeColor = '#28a745'; // Green for low risk
-            }
-            
-            this.gaugeChart.data.datasets[0].backgroundColor = [gaugeColor, '#e9ecef'];
-            this.gaugeChart.update('none');
-        }
         
         // Update prediction status
         const predictionStatus = document.getElementById('predictionStatus');

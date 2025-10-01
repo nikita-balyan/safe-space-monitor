@@ -1,0 +1,16 @@
+{
+    "name": "Safe Space Monitor",
+    "short_name": "SafeSpace",
+    "description": "Sensory overload monitoring and calming activities",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#4CAF50",
+    "icons": [
+        {
+            "src": "/favicon.ico",
+            "sizes": "64x64",
+            "type": "image/x-icon"
+        }
+    ]
+}

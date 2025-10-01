@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "build": "react-scripts build",
+    "start": "serve -s build",
+    "render-build": "npm run build"
+  }
+}
