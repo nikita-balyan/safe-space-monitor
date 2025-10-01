@@ -1451,10 +1451,19 @@ if __name__ == "__main__":
     print(f"📊 Training samples: {TRAINING_SAMPLES}")
     print(f"💾 Max data points: {MAX_DATA_POINTS}")
     
-    # Use SocketIO for both development and production
-    socketio.run(app, 
-                host="0.0.0.0", 
-                port=PORT, 
-                debug=DEBUG, 
-                allow_unsafe_werkzeug=True,
-                log_output=DEBUG)
+    # Production-safe startup
+    if IS_RENDER:
+        # Production mode - NO allow_unsafe_werkzeug
+        socketio.run(app, 
+                    host="0.0.0.0", 
+                    port=PORT, 
+                    debug=False,
+                    log_output=False)
+    else:
+        # Development mode - keep your current settings
+        socketio.run(app, 
+                    host="0.0.0.0", 
+                    port=PORT, 
+                    debug=DEBUG, 
+                    allow_unsafe_werkzeug=True,
+                    log_output=DEBUG)
