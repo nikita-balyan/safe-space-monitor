@@ -24,6 +24,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.impute import SimpleImputer
 import warnings
 import random
 warnings.filterwarnings('ignore')
@@ -60,19 +61,22 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # Add CORS support with safer defaults
 CORS(app)
 
-# Socket.IO configuration based on environment
+# Socket.IO configuration with proper CORS for Render
 socketio_config = {
-    'cors_allowed_origins': "*",  # Consider restricting in production
     'async_mode': 'threading',
     'logger': logger.level == logging.DEBUG,
     'engineio_logger': logger.level == logging.DEBUG
 }
 
-# For production, you might want to restrict origins:
-if os.environ.get("DEBUG", "False").lower() != "true":
+# Set CORS origins based on environment
+if os.environ.get("DEBUG", "False").lower() == "true":
+    socketio_config['cors_allowed_origins'] = "*"
+else:
+    # Production - allow both Render domain and localhost for testing
     socketio_config['cors_allowed_origins'] = [
-        "https://your-render-app.onrender.com",
-        # Add other production domains as needed
+        "https://safe-space-monitor.onrender.com",
+        "http://localhost:5000",
+        "http://localhost:10000"
     ]
 
 socketio = SocketIO(app, **socketio_config)
@@ -216,7 +220,7 @@ enhanced_activities = [
     }
 ]
 
-# Enhanced ML Model
+# Enhanced ML Model with PROPER NaN handling - COMPLETE FIX
 class EnhancedSensoryModel:
     def __init__(self):
         self.model = None
@@ -224,12 +228,13 @@ class EnhancedSensoryModel:
         self.accuracy = 0
         self.precision = 0
         self.recall = 0
+        self.imputer = SimpleImputer(strategy="mean")
+        self.is_trained = False
+        self.is_imputer_fitted = False
         
     def generate_training_data(self, n_samples=1000):
         """Generate realistic synthetic training data"""
         np.random.seed(42)
-        
-        # Base patterns for different overload types
         data = []
         
         for i in range(n_samples):
@@ -239,21 +244,18 @@ class EnhancedSensoryModel:
                 light = np.random.normal(2000, 800)
                 motion = np.random.normal(30, 12)
                 overload = 0
-                
             # Auditory overload (15% of data)
             elif i < 0.75 * n_samples:
                 noise = np.random.normal(90, 20)
                 light = np.random.normal(1800, 600)
                 motion = np.random.normal(25, 10)
                 overload = 1
-                
             # Visual overload (15% of data)
             elif i < 0.9 * n_samples:
                 noise = np.random.normal(55, 12)
                 light = np.random.normal(6000, 1500)
                 motion = np.random.normal(20, 8)
                 overload = 1
-                
             # Motion overload (10% of data)
             else:
                 noise = np.random.normal(60, 10)
@@ -266,210 +268,201 @@ class EnhancedSensoryModel:
             light = max(100, min(10000, light))
             motion = max(0, min(100, motion))
             
+            # Introduce some NaN values (5% of data)
+            if np.random.random() < 0.05:
+                nan_choice = np.random.choice(['noise', 'light', 'motion'])
+                if nan_choice == 'noise': noise = np.nan
+                elif nan_choice == 'light': light = np.nan
+                else: motion = np.nan
+            
             data.append({
-                'noise': noise,
-                'light': light,
-                'motion': motion,
-                'overload': overload,
-                'timestamp': datetime.now().isoformat()
+                'noise': noise, 'light': light, 'motion': motion,
+                'overload': overload, 'timestamp': datetime.now().isoformat()
             })
         
         return pd.DataFrame(data)
     
     def extract_features(self, df):
-        """Extract advanced features from sensor data"""
-        features = []
+        """Extract ALL 18 features matching training"""
+        df_features = df.copy()
         
-        # Basic features
-        features.extend(['noise', 'light', 'motion'])
+        # 1-3: Basic features
+        features = ['noise', 'light', 'motion']
         
-        # Statistical features (simulating rolling windows)
-        df['noise_rolling_mean'] = df['noise'].rolling(window=5, min_periods=1).mean()
-        df['light_rolling_mean'] = df['light'].rolling(window=5, min_periods=1).mean()
-        df['motion_rolling_mean'] = df['motion'].rolling(window=5, min_periods=1).mean()
+        # 4-9: Rolling statistics (simulated)
+        for col in ['noise', 'light', 'motion']:
+            df_features[f'{col}_rolling_mean'] = df_features[col].rolling(window=5, min_periods=1).mean()
+            df_features[f'{col}_rolling_std'] = df_features[col].rolling(window=5, min_periods=1).std()
+            features.extend([f'{col}_rolling_mean', f'{col}_rolling_std'])
         
-        df['noise_rolling_std'] = df['noise'].rolling(window=5, min_periods=1).std()
-        df['light_rolling_std'] = df['light'].rolling(window=5, min_periods=1).std()
-        df['motion_rolling_std'] = df['motion'].rolling(window=5, min_periods=1).std()
-        
-        features.extend([
-            'noise_rolling_mean', 'light_rolling_mean', 'motion_rolling_mean',
-            'noise_rolling_std', 'light_rolling_std', 'motion_rolling_std'
-        ])
-        
-        # Rate of change features
-        df['noise_roc'] = df['noise'].diff().fillna(0)
-        df['light_roc'] = df['light'].diff().fillna(0)
-        df['motion_roc'] = df['motion'].diff().fillna(0)
-        
+        # 10-12: Rate of change
+        df_features['noise_roc'] = df_features['noise'].diff().fillna(0)
+        df_features['light_roc'] = df_features['light'].diff().fillna(0)
+        df_features['motion_roc'] = df_features['motion'].diff().fillna(0)
         features.extend(['noise_roc', 'light_roc', 'motion_roc'])
         
-        # Interaction features
-        df['noise_light_interaction'] = df['noise'] * df['light'] / 1000
-        df['noise_motion_interaction'] = df['noise'] * df['motion'] / 100
-        df['light_motion_interaction'] = df['light'] * df['motion'] / 1000
+        # 13-15: Interaction features
+        df_features['noise_light_interaction'] = df_features['noise'] * df_features['light'] / 1000
+        df_features['noise_motion_interaction'] = df_features['noise'] * df_features['motion'] / 100
+        df_features['light_motion_interaction'] = df_features['light'] * df_features['motion'] / 1000
+        features.extend(['noise_light_interaction', 'noise_motion_interaction', 'light_motion_interaction'])
         
-        features.extend([
-            'noise_light_interaction', 
-            'noise_motion_interaction', 
-            'light_motion_interaction'
-        ])
-        
-        # Threshold crossing features
-        df['noise_above_70'] = (df['noise'] > 70).astype(int)
-        df['light_above_3000'] = (df['light'] > 3000).astype(int)
-        df['motion_above_50'] = (df['motion'] > 50).astype(int)
-        
+        # 16-18: Threshold features
+        df_features['noise_above_70'] = (df_features['noise'] > 70).astype(int)
+        df_features['light_above_3000'] = (df_features['light'] > 3000).astype(int)
+        df_features['motion_above_50'] = (df_features['motion'] > 50).astype(int)
         features.extend(['noise_above_70', 'light_above_3000', 'motion_above_50'])
         
         self.feature_names = features
-        return df[features]
+        return df_features[features]
     
     def train(self, n_samples=1000):
-        """Train the enhanced model"""
-        print("🔄 Generating training data...")
-        df = self.generate_training_data(n_samples)
-        
-        print("🔧 Extracting features...")
-        X = self.extract_features(df)
-        y = df['overload']
-        
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
-        
-        print("🤖 Training Random Forest model...")
-        self.model = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=10,
-            min_samples_split=5,
-            min_samples_leaf=2,
-            random_state=42
-        )
-        
-        self.model.fit(X_train, y_train)
-        
-        # Evaluate
-        y_pred = self.model.predict(X_test)
-        self.accuracy = accuracy_score(y_test, y_pred)
-        self.precision = precision_score(y_test, y_pred, zero_division=0)
-        self.recall = recall_score(y_test, y_pred, zero_division=0)
-        
-        print(f"✅ Model trained successfully!")
-        print(f"📊 Accuracy: {self.accuracy:.3f}")
-        print(f"🎯 Precision: {self.precision:.3f}")
-        print(f"📈 Recall: {self.recall:.3f}")
-        
-        return self.model
-    
-    def predict(self, sensor_data):
-        """Make prediction on new sensor data"""
-        if self.model is None:
-            # Fallback to simple threshold-based prediction
-            return self._fallback_prediction(sensor_data)
-        
+        """Train model with PROPER imputer fitting"""
         try:
-            # Create feature vector
-            features = self._create_feature_vector(sensor_data)
+            print("🔄 Generating training data...")
+            df = self.generate_training_data(n_samples)
             
-            # Get prediction probability
-            probability = self.model.predict_proba([features])[0, 1]
+            print("🔧 Extracting features...")
+            X = self.extract_features(df)
+            y = df['overload']
             
-            return {
-                'probability': float(probability),
-                'prediction': int(probability > 0.5),
-                'confidence': float(probability if probability > 0.5 else 1 - probability),
-                'model_used': 'enhanced_random_forest',
-                'features_used': len(features)
-            }
+            # CRITICAL: Fit the imputer FIRST
+            print("🔧 Fitting imputer...")
+            X_clean = self.imputer.fit_transform(X)
+            self.is_imputer_fitted = True
+            
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                X_clean, y, test_size=0.2, random_state=42, stratify=y
+            )
+            
+            print("🤖 Training Random Forest...")
+            self.model = RandomForestClassifier(
+                n_estimators=100, max_depth=10, min_samples_split=5,
+                min_samples_leaf=2, random_state=42
+            )
+            
+            self.model.fit(X_train, y_train)
+            
+            # Evaluate
+            y_pred = self.model.predict(X_test)
+            self.accuracy = accuracy_score(y_test, y_pred)
+            self.precision = precision_score(y_test, y_pred, zero_division=0)
+            self.recall = recall_score(y_test, y_pred, zero_division=0)
+            self.is_trained = True
+            
+            print(f"✅ Model trained! Accuracy: {self.accuracy:.3f}")
+            print(f"🔧 Features: {len(self.feature_names)}, Imputer fitted: {self.is_imputer_fitted}")
+            
+            return self.model
             
         except Exception as e:
-            print(f"⚠️ Enhanced model prediction failed: {e}")
-            return self._fallback_prediction(sensor_data)
+            print(f"❌ Training failed: {e}")
+            self.is_trained = False
+            self.is_imputer_fitted = False
+            return None
     
     def _create_feature_vector(self, sensor_data):
-        """Create feature vector from sensor data"""
-        noise = sensor_data['noise']
-        light = sensor_data['light']
-        motion = sensor_data['motion']
+        """Create EXACTLY 18 features for prediction"""
+        noise = sensor_data.get('noise', 0) or 0
+        light = sensor_data.get('light', 0) or 0
+        motion = sensor_data.get('motion', 0) or 0
         
-        # Basic features
-        features = [noise, light, motion]
+        # Handle NaN/None values
+        if np.isnan(noise) or noise is None: noise = 0
+        if np.isnan(light) or light is None: light = 0
+        if np.isnan(motion) or motion is None: motion = 0
         
-        # Statistical features (simplified)
-        features.extend([noise, light, motion])  # Using current values as mean
-        features.extend([5, 300, 5])  # Simplified std dev
+        features = []
         
-        # Rate of change (simplified)
-        features.extend([0, 0, 0])  # Assuming no previous data
+        # 1-3: Basic features
+        features.extend([noise, light, motion])
         
-        # Interaction features
+        # 4-9: Rolling statistics (use current values as approximation)
+        features.extend([noise, light, motion])  # rolling mean
+        features.extend([10.0, 500.0, 10.0])    # rolling std (approximated)
+        
+        # 10-12: Rate of change (no history available)
+        features.extend([0.0, 0.0, 0.0])
+        
+        # 13-15: Interaction features
         features.extend([
             noise * light / 1000,
             noise * motion / 100,
             light * motion / 1000
         ])
         
-        # Threshold features
+        # 16-18: Threshold features
         features.extend([
-            int(noise > 70),
-            int(light > 3000),
-            int(motion > 50)
+            float(noise > 70),
+            float(light > 3000),
+            float(motion > 50)
         ])
         
         return features
     
+    def predict(self, sensor_data):
+        """Make prediction with PROPER error handling"""
+        if not self.is_trained or not self.is_imputer_fitted:
+            return self._fallback_prediction(sensor_data)
+        
+        try:
+            # Create feature vector
+            features = self._create_feature_vector(sensor_data)
+            
+            # Transform using fitted imputer
+            features_clean = self.imputer.transform([features])
+            
+            # Get prediction
+            probability = self.model.predict_proba(features_clean)[0, 1]
+            
+            return {
+                'probability': float(probability),
+                'prediction': int(probability > 0.5),
+                'confidence': float(probability if probability > 0.5 else 1 - probability),
+                'model_used': 'enhanced_random_forest',
+                'features_used': len(features),
+                'nan_handled': True
+            }
+            
+        except Exception as e:
+            print(f"⚠️ Enhanced model failed: {e}")
+            return self._fallback_prediction(sensor_data)
+    
     def _fallback_prediction(self, sensor_data):
-        """Fallback prediction using simple thresholds"""
-        noise = sensor_data['noise']
-        light = sensor_data['light']
-        motion = sensor_data['motion']
+        """Simple fallback prediction"""
+        noise = sensor_data.get('noise', 0) or 0
+        light = sensor_data.get('light', 0) or 0
+        motion = sensor_data.get('motion', 0) or 0
         
-        # Simple weighted threshold model
         risk_score = 0.0
-        
-        if noise > 80:
-            risk_score += 0.4
-        elif noise > 70:
-            risk_score += 0.2
-            
-        if light > 5000:
-            risk_score += 0.4
-        elif light > 3000:
-            risk_score += 0.2
-            
-        if motion > 60:
-            risk_score += 0.2
-        elif motion > 50:
-            risk_score += 0.1
-            
-        probability = min(risk_score, 1.0)
+        if noise > 80: risk_score += 0.4
+        elif noise > 70: risk_score += 0.2
+        if light > 5000: risk_score += 0.4
+        elif light > 3000: risk_score += 0.2
+        if motion > 60: risk_score += 0.2
+        elif motion > 50: risk_score += 0.1
         
         return {
-            'probability': probability,
-            'prediction': int(probability > 0.5),
+            'probability': min(risk_score, 1.0),
+            'prediction': int(risk_score > 0.5),
             'confidence': 0.7,
             'model_used': 'fallback_threshold',
-            'features_used': 3
+            'features_used': 3,
+            'nan_handled': True
         }
     
     def save_model(self, filepath='models/enhanced_sensory_model.joblib'):
-        """Save trained model to file"""
-        if self.model is None:
-            print("❌ No model to save. Train the model first.")
+        """Save trained model"""
+        if not self.is_trained:
             return False
         
-        import os
         os.makedirs('models', exist_ok=True)
-        
         model_data = {
-            'model': self.model,
-            'feature_names': self.feature_names,
-            'accuracy': self.accuracy,
-            'precision': self.precision,
-            'recall': self.recall,
-            'training_date': datetime.now().isoformat()
+            'model': self.model, 'feature_names': self.feature_names,
+            'accuracy': self.accuracy, 'precision': self.precision, 'recall': self.recall,
+            'imputer': self.imputer, 'is_trained': self.is_trained,
+            'is_imputer_fitted': self.is_imputer_fitted
         }
         
         joblib.dump(model_data, filepath)
@@ -477,37 +470,58 @@ class EnhancedSensoryModel:
         return True
     
     def load_model(self, filepath='models/enhanced_sensory_model.joblib'):
-        """Load trained model from file"""
+        """Load trained model"""
         try:
+            if not os.path.exists(filepath):
+                return False
+                
             model_data = joblib.load(filepath)
             self.model = model_data['model']
             self.feature_names = model_data['feature_names']
             self.accuracy = model_data['accuracy']
             self.precision = model_data['precision']
             self.recall = model_data['recall']
+            self.imputer = model_data.get('imputer', SimpleImputer(strategy="mean"))
+            self.is_trained = model_data.get('is_trained', True)
+            self.is_imputer_fitted = model_data.get('is_imputer_fitted', True)
             
-            print(f"✅ Model loaded from {filepath}")
-            print(f"📊 Previous performance - Accuracy: {self.accuracy:.3f}")
+            print(f"✅ Model loaded: Accuracy={self.accuracy:.3f}, Imputer fitted={self.is_imputer_fitted}")
             return True
             
         except Exception as e:
             print(f"❌ Failed to load model: {e}")
+            self.is_trained = False
+            self.is_imputer_fitted = False
             return False
 
 # Global enhanced model instance
 enhanced_model = EnhancedSensoryModel()
 
 def initialize_enhanced_model():
-    """Initialize and train the enhanced model"""
+    """Initialize model with FORCE TRAINING if needed"""
     print("🚀 Initializing Enhanced Sensory Model...")
     
-    # Try to load existing model first
-    if enhanced_model.load_model():
-        return enhanced_model
+    # Try to load existing model
+    model_path = 'models/enhanced_sensory_model.joblib'
+    if enhanced_model.load_model(model_path):
+        if enhanced_model.is_trained and enhanced_model.is_imputer_fitted:
+            print("✅ Enhanced model loaded successfully!")
+            return enhanced_model
+        else:
+            print("⚠️ Loaded model but not properly trained, retraining...")
     
-    # Train new model
-    enhanced_model.train(n_samples=1000)
-    enhanced_model.save_model()
+    # FORCE training a new model
+    print("🔄 Training new model (this may take a moment)...")
+    try:
+        os.makedirs('models', exist_ok=True)
+        success = enhanced_model.train(n_samples=1000)
+        if success:
+            enhanced_model.save_model(model_path)
+            print("✅ New model trained and saved successfully!")
+        else:
+            print("❌ Model training failed, using fallback mode")
+    except Exception as e:
+        print(f"❌ Training error: {e}")
     
     return enhanced_model
 
@@ -537,7 +551,8 @@ def load_ml_model():
                 "precision": model_data.get('precision', 0.92),
                 "recall": model_data.get('recall', 0.91),
                 "features": model_data.get('feature_names', []),
-                "message": "Enhanced model with advanced features"
+                "message": "Enhanced model with advanced features",
+                "nan_handling": True
             }
             
             logger.info("✅ Enhanced ML model loaded successfully")
@@ -564,7 +579,8 @@ def load_ml_model():
                 model_metadata = {
                     "model_type": str(type(model).__name__),
                     "training_date": "2025-01-15",
-                    "features": ["noise", "light", "motion"]
+                    "features": ["noise", "light", "motion"],
+                    "nan_handling": False
                 }
             except Exception as e:
                 logger.error(f"Error loading simple model: {e}")
@@ -591,33 +607,44 @@ def load_recommendation_engine():
         return None
 
 def generate_sensor_data():
-    """Generate simulated sensor data for real-time updates"""
+    """Generate simulated sensor data for real-time updates with NaN safety"""
     try:
         # Try to use sensor simulator if available
         from sensor_simulator import generate_sensor_data as sim_data
-        return sim_data()
+        data = sim_data()
+        # Ensure no NaN values in sensor data
+        for key in ['noise', 'light', 'motion']:
+            if np.isnan(data.get(key, 0)):
+                data[key] = 0
+        return data
     except ImportError:
-        # Fallback simulation
+        # Fallback simulation with NaN safety
         return {
-            'noise': np.random.normal(60, 20),
-            'light': np.random.normal(2000, 1000),
-            'motion': np.random.normal(30, 15),
+            'noise': max(0, np.random.normal(60, 20)),
+            'light': max(0, np.random.normal(2000, 1000)),
+            'motion': max(0, np.random.normal(30, 15)),
             'temperature': 22.0 + random.random() * 2,
             'heart_rate': 70 + random.randint(-10, 10),
             'timestamp': datetime.now().isoformat()
         }
 
 def get_overload_prediction(sensor_data):
-    """Get overload prediction from sensor data using enhanced model"""
+    """Get overload prediction from sensor data using enhanced model with NaN safety"""
     try:
-        if enhanced_model.model is not None:
+        # Ensure no NaN values in sensor data
+        clean_sensor_data = sensor_data.copy()
+        for key in ['noise', 'light', 'motion']:
+            if np.isnan(clean_sensor_data.get(key, 0)):
+                clean_sensor_data[key] = 0
+        
+        if enhanced_model.is_trained:
             # Use enhanced model
-            prediction = enhanced_model.predict(sensor_data)
+            prediction = enhanced_model.predict(clean_sensor_data)
             logger.info(f"Enhanced model prediction: {prediction}")
             return prediction['probability']
         elif model is not None:
             # Use simple model
-            features = np.array([[sensor_data['noise'], sensor_data['light'], sensor_data['motion']]])
+            features = np.array([[clean_sensor_data['noise'], clean_sensor_data['light'], clean_sensor_data['motion']]])
             
             if hasattr(model, 'predict_proba'):
                 probability = model.predict_proba(features)[0, 1]
@@ -629,11 +656,11 @@ def get_overload_prediction(sensor_data):
         else:
             # Fallback to simple threshold-based prediction
             risk_score = 0.0
-            if sensor_data['noise'] > 80:
+            if clean_sensor_data['noise'] > 80:
                 risk_score += 0.4
-            if sensor_data['light'] > 5000:
+            if clean_sensor_data['light'] > 5000:
                 risk_score += 0.4
-            if sensor_data['motion'] > 60:
+            if clean_sensor_data['motion'] > 60:
                 risk_score += 0.2
             
             return min(risk_score, 1.0)
@@ -642,11 +669,11 @@ def get_overload_prediction(sensor_data):
         logger.error(f"Prediction error: {e}")
         # Fallback to simple calculation
         risk_score = 0.0
-        if sensor_data['noise'] > 80:
+        if sensor_data.get('noise', 0) > 80:
             risk_score += 0.4
-        if sensor_data['light'] > 5000:
+        if sensor_data.get('light', 0) > 5000:
             risk_score += 0.4
-        if sensor_data['motion'] > 60:
+        if sensor_data.get('motion', 0) > 60:
             risk_score += 0.2
         
         return min(risk_score, 1.0)
@@ -659,11 +686,11 @@ def get_recommendations(sensor_data, prediction):
         if recommendation_engine:
             # Determine overload type based on sensor data
             overload_type = "general"
-            if sensor_data['noise'] > 80:
+            if sensor_data.get('noise', 0) > 80:
                 overload_type = "auditory"
-            elif sensor_data['light'] > 5000:
+            elif sensor_data.get('light', 0) > 5000:
                 overload_type = "visual"
-            elif sensor_data['motion'] > 60:
+            elif sensor_data.get('motion', 0) > 60:
                 overload_type = "physical"
             
             recommendations = recommendation_engine.get_recommendations(
@@ -687,13 +714,13 @@ def get_recommendations(sensor_data, prediction):
                 {
                     'title': 'Reduce Noise',
                     'description': 'Move to a quieter area or use ear protection',
-                    'priority': 'high' if sensor_data['noise'] > 70 else 'medium',
+                    'priority': 'high' if sensor_data.get('noise', 0) > 70 else 'medium',
                     'effectiveness': 85
                 },
                 {
                     'title': 'Adjust Lighting',
                     'description': 'Dim lights or move to a darker space',
-                    'priority': 'high' if sensor_data['light'] > 4000 else 'medium',
+                    'priority': 'high' if sensor_data.get('light', 0) > 4000 else 'medium',
                     'effectiveness': 80
                 },
                 {
@@ -717,11 +744,11 @@ def get_personalized_recommendations(sensor_data, prediction, user_id='default')
         
         # Determine overload type
         overload_type = "general"
-        if sensor_data['noise'] > 80:
+        if sensor_data.get('noise', 0) > 80:
             overload_type = "auditory"
-        elif sensor_data['light'] > 5000:
+        elif sensor_data.get('light', 0) > 5000:
             overload_type = "visual" 
-        elif sensor_data['motion'] > 60:
+        elif sensor_data.get('motion', 0) > 60:
             overload_type = "motion"
         
         # Get base recommendations
@@ -1186,7 +1213,8 @@ def register_routes():
             "status": "healthy", 
             "timestamp": datetime.now().isoformat(),
             "model_loaded": model is not None,
-            "enhanced_model_loaded": enhanced_model.model is not None
+            "enhanced_model_loaded": enhanced_model.is_trained,
+            "nan_handling": True
         })
 
 # =============================================================================
