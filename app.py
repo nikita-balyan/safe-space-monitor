@@ -1465,19 +1465,10 @@ if __name__ == "__main__":
     print(f"📊 Training samples: {TRAINING_SAMPLES}")
     print(f"💾 Max data points: {MAX_DATA_POINTS}")
     
-    # Production-safe startup
-    if IS_RENDER:
-        # Production mode - allow unsafe werkzeug for Render
-        socketio.run(app, 
-                    host="0.0.0.0", 
-                    port=PORT, 
-                    debug=False,
-                    allow_unsafe_werkzeug=True,  # Required for Render
-                    log_output=False)
-    else:
-        # Development mode
-        socketio.run(app, 
-                    host="0.0.0.0", 
-                    port=PORT, 
-                    debug=DEBUG,
-                    log_output=DEBUG)
+    # Production-safe startup with threading
+    socketio.run(app, 
+                host="0.0.0.0", 
+                port=PORT, 
+                debug=DEBUG,
+                allow_unsafe_werkzeug=True,  # Required for Render production
+                log_output=DEBUG)
